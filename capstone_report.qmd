@@ -1,0 +1,36 @@
+---
+title: "Understanding the relationship between stocks of community wealth and food system"
+author: "Elliot Hohn"
+format: html
+editor: visual
+---
+
+## Introduction
+
+Community wealth quantification outline.
+
+LAMP grant program description.
+
+Hypothesis re: relationship between the two.
+
+## Methods
+
+Plan right now is load county level community wealth data, and LAMP grant data, identify counties with low grant funding amounts (or maybe split into high, medium, and low?), then perform cluster analysis to determine common characteristics of the counties in each group, if any.
+
+## Environment setup
+
+```{r}
+library(tidyverse)
+library(sf)
+```
+
+## Load community stocks data
+
+Load data directly from CSU [github repo](https://github.com/CSU-Local-and-Regional-Food-Systems "CSU Local and Regional Food Systems repo").
+
+```{r}
+comm_stocks_url <- 'https://raw.githubusercontent.com/CSU-Local-and-Regional-Food-Systems/USDA-AMS-Data-and-Metrics/main/Indicators%20of%20Community%20Wealth/community_wealth.csv'
+comm_stocks <- read.csv(comm_stocks_url)
+print(head(comm_stocks))
+print(colnames(comm_stocks))
+```
