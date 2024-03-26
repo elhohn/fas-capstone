@@ -22,6 +22,8 @@ Plan right now is load county level community wealth data, and LAMP grant data, 
 ```{r}
 library(tidyverse)
 library(sf)
+library(openxlsx)
+library(stringr)
 ```
 
 ## Load community stocks data
@@ -32,5 +34,67 @@ Load data directly from CSU [github repo](https://github.com/CSU-Local-and-Regio
 comm_stocks_url <- 'https://raw.githubusercontent.com/CSU-Local-and-Regional-Food-Systems/USDA-AMS-Data-and-Metrics/main/Indicators%20of%20Community%20Wealth/community_wealth.csv'
 comm_stocks <- read.csv(comm_stocks_url)
 print(head(comm_stocks))
-print(colnames(comm_stocks))
+```
+
+```{r}
+# ggplot(comm_stocks, aes(x = value)) + 
+#   geom_histogram(fill = 'red', colour = 'black') + 
+#   facet_wrap(variable_name ~ .)
+
+print(unique(comm_stocks$variable_name))
+```
+
+```{r}
+summary_stats <- comm_stocks %>%
+  group_by(variable_name) %>%
+  summarize(
+    mean = mean(value),
+    median = median(value),
+    sd = sd(value),
+    max = max(value),
+    min = min(value)
+  )
+
+print(summary_stats)
+```
+
+## Load LAMP data
+
+Data downloaded directly from URL on the LAMP Navigator [webpage](https://www.ams.usda.gov/data/lamp-navigator "LAMP Navigator web pagef").
+
+```{r}
+lamp_url <- 'https://www.ams.usda.gov/sites/default/files/media/LAMPDatasetandDataDictionary.xlsx'
+
+lamp <- read.xlsx(lamp_url, sheet = 'LAMP Dataset 2006 to 2023')
+print(head(lamp))
+```
+
+### Load county to zip crosswalk data from HUD
+
+Dataset was downloaded from HUD [site](https://www.huduser.gov/portal/datasets/usps_crosswalk.html "HUD site"). Note: you must be registered and logged in to access data.
+
+```{r}
+crosswalk <- read.xlsx('data/ZIP_COUNTY_122023.xlsx', sheet = 1)
+print(head(crosswalk))
+```
+
+### Merge datasets
+
+`comm_stocks` data has a `fips` code, which aligns with the `COUNTY` column in `crosswalk`. The `lamp` data has a zip code (`zip` column), so with all of this together we can join it all and clean it up a bit.
+
+```{r}
+# add county name to lamp data using crosswalk dataframe
+df1 <- merge(lamp, crosswalk, by.x = 'Zip', by.y = 'ZIP')
+```
+
+```{r}
+# Function to add leading 0 to 4-digit fips values in comm_stocks
+add_leading_zero <- function(x) {
+  # Check if the number has 4 digits
+  ifelse(nchar(x) == 4, paste0("0", x), x)
+}
+
+comm_stocks$fips <- sapply(comm_stocks$fips, add_leading_zero)
+
+df <- merge(comm_stocks, crosswalk, by.x = "fips", by.y = "COUNTY")
 ```
