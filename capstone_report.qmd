@@ -24,6 +24,7 @@ library(tidyverse)
 library(sf)
 library(openxlsx)
 library(stringr)
+library(corrplot)
 ```
 
 ## Load community stocks data
@@ -33,6 +34,14 @@ Load data directly from CSU [github repo](https://github.com/CSU-Local-and-Regio
 ```{r}
 comm_stocks_url <- 'https://raw.githubusercontent.com/CSU-Local-and-Regional-Food-Systems/USDA-AMS-Data-and-Metrics/main/Indicators%20of%20Community%20Wealth/community_wealth.csv'
 comm_stocks <- read.csv(comm_stocks_url)
+
+# Function to add leading 0 to 4-digit fips values in comm_stocks
+add_leading_zero <- function(x) {
+  # Check if the number has 4 digits
+  ifelse(nchar(x) == 4, paste0("0", x), x)
+}
+
+comm_stocks$fips <- sapply(comm_stocks$fips, add_leading_zero)
 print(head(comm_stocks))
 ```
 
@@ -44,6 +53,53 @@ print(head(comm_stocks))
 print(unique(comm_stocks$variable_name))
 ```
 
+### Check correlations between variables
+
+There are different years associated with the rows of data...how should I deal with this? Filter to only the newest data? Use the average? The grants data will also have a date associate with it, but I was thinking those grants would all be summed to get a "total amount invested" value.
+
+I think for now I'm going to use the mean across all years for any given variable. A quick look at the data indicates that the values don't shift drastically from year to year, unsurprisingly.
+
+```{r}
+# reshape data from tall to wide to give each variable its own column
+comm_stocks_wide <- comm_stocks %>%
+  select(fips, year, variable_name, value) %>%
+  group_by(fips, variable_name) %>%
+  summarise(value = mean(value)) %>%
+  ungroup() %>%
+  pivot_wider(names_from = variable_name, values_from = value)
+```
+
+```{r}
+# correlation matrix
+correlation <- cor(comm_stocks_wide[, 2:ncol(comm_stocks_wide)], use = "complete.obs")
+corrplot(correlation, method = 'square', tl.cex = 0.4, tl.col = 'black', tl.srt = 45,
+         type = 'upper', order = "hclust")
+```
+
+### Load counties shapefile and join to community stocks data
+
+```{r}
+counties <- st_read('data/cb_2021_us_county_20m/cb_2021_us_county_20m.shp') %>%
+  filter(!STATE_NAME %in% c('Alaska', 'Hawaii', 'Puerto Rico')) %>%
+  select(GEOID, geometry) %>%
+  st_transform(5070)
+
+comm_stocks_geo <- merge(counties, comm_stocks_wide, by.x = 'GEOID', by.y = 'fips')
+
+ggplot(comm_stocks_geo) +
+  geom_sf(aes(fill = food_secure)) +
+  scale_fill_distiller(
+    name="Food Security", 
+    palette = "BrBG",
+    direction = 1
+    ) +
+  theme_void() +
+  theme(legend.position = "bottom",
+        legend.key.width = unit(2,"cm"),
+        legend.key.height = unit(0.2,"cm")
+  )
+```
+
 ```{r}
 summary_stats <- comm_stocks %>%
   group_by(variable_name) %>%
@@ -52,6 +108,7 @@ summary_stats <- comm_stocks %>%
     median = median(value),
     sd = sd(value),
     max = max(value),
+    
     min = min(value)
   )
 
@@ -88,13 +145,5 @@ df1 <- merge(lamp, crosswalk, by.x = 'Zip', by.y = 'ZIP')
 ```
 
 ```{r}
-# Function to add leading 0 to 4-digit fips values in comm_stocks
-add_leading_zero <- function(x) {
-  # Check if the number has 4 digits
-  ifelse(nchar(x) == 4, paste0("0", x), x)
-}
-
-comm_stocks$fips <- sapply(comm_stocks$fips, add_leading_zero)
-
 df <- merge(comm_stocks, crosswalk, by.x = "fips", by.y = "COUNTY")
 ```
