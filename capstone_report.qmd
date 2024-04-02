@@ -200,33 +200,3 @@ ggplot(comm_stocks_geo) +
         legend.key.height = unit(0.2,"cm")
   )
 ```
-
-### Load county to zip code crosswalk data from HUD
-
-Dataset was downloaded from HUD [site](https://www.huduser.gov/portal/datasets/usps_crosswalk.html "HUD site"). Note: you must be registered and logged in to access data. Note: page 6 of [this document](https://www.huduser.gov/portal/periodicals/cityscpe/vol20num2/ch16.pdf "HUD data explainer") explains the data.
-
-`res_ratio` column is the ratio of residential addresses.
-
-`bus_ratio` column is the ratio of business addresses
-
-`oth_ratio` column is the ratio of other addresses to the total number of other addresses in the entire ZIP.
-
-`tot_ratio` column is the total ratio of all addresses to the total number of addresses in the entire ZIP.
-
-```{r}
-crosswalk <- read.xlsx('data/ZIP_COUNTY_122023.xlsx', sheet = 1)
-print(head(crosswalk))
-```
-
-### Merge datasets
-
-`comm_stocks` data has a `fips` code, which aligns with the `COUNTY` column in `crosswalk`. The `lamp` data has a zip code (`zip` column), so with all of this together we can join it all and clean it up a bit.
-
-```{r}
-# add county name to lamp data using crosswalk dataframe
-df1 <- merge(lamp, crosswalk, by.x = 'Zip', by.y = 'ZIP')
-```
-
-```{r}
-df <- merge(comm_stocks, crosswalk, by.x = "fips", by.y = "COUNTY")
-```
