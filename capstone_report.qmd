@@ -15,7 +15,9 @@ Hypothesis re: relationship between the two.
 
 ## Methods
 
-Plan right now is load county level community wealth data, and LAMP grant data, identify counties with low grant funding amounts (or maybe split into high, medium, and low?), then perform cluster analysis to determine common characteristics of the counties in each group, if any.
+Plan right now is load county level community wealth data, and LAMP grant data, then perform cluster analysis on LAMP dataset
+
+From [covid cluster analysis paper](https://www.biorxiv.org/content/biorxiv/early/2020/11/12/2020.11.12.379537.full.pdf): "This analysis was conducted in three stages. In Stage 0, county-level data were gathered from several sources, merged, and preprocessed for consistency. In Stage 1, time series clustering was performed on the number of newly reported confirmed COVID 19 cases per day (LAMP funding per year in our case?). Finally, in Stage 2, an explanatory model was fit to describe the relationship between cluster membership and several socioeconomic and political factors (community wealth factors?) describing the counties."
 
 ## Environment setup
 
@@ -75,6 +77,18 @@ comm_stocks_wide <- comm_stocks %>%
 correlation <- cor(comm_stocks_wide[, 2:ncol(comm_stocks_wide)], use = "complete.obs")
 corrplot(correlation, method = 'square', tl.cex = 0.4, tl.col = 'black', tl.srt = 45,
          type = 'upper', order = "hclust")
+```
+
+### Ideas for additional variables
+
+Rural/Underserved Counties: The Consumer Financial Bureau6 provides a list of rural or
+underserved counties based on the Bureau’s interpretive rule (Regulation Z) using data from the
+Home Mortgage Disclosure Act
+
+### Check out some clustering approaches
+
+```{r}
+kc <- kmeans(na.omit(comm_stocks_wide[, 2:ncol(comm_stocks_wide)]), 4)
 ```
 
 ### Load counties shapefile and join to community stocks data
@@ -199,4 +213,38 @@ ggplot(comm_stocks_geo) +
         legend.key.width = unit(2,"cm"),
         legend.key.height = unit(0.2,"cm")
   )
+```
+
+### Spatial join point data to county polygons
+
+Need to assign lamp grant point data to county level
+
+```{r}
+# crs for each already aligns
+lamp_by_county <- counties %>%
+  st_join(lamp_sf, join = st_contains, left = TRUE) %>%
+  group_by(GEOID) %>%
+  mutate(total_grant = sum(Award.Amount))
+
+ggplot(lamp_by_county) +
+  geom_sf(aes(fill = total_grant)) +
+  scale_fill_distiller(
+    name="Award Amount", 
+    palette = "Greens",
+    direction = 1,
+    na.value = 'grey75'
+    ) +
+  theme_void() +
+  theme(legend.position = "bottom",
+        legend.key.width = unit(2,"cm"),
+        legend.key.height = unit(0.2,"cm")
+  )
+```
+
+### Cluster LAMP grant county data
+
+Need to figure out how to account for multiple years of grants, maybe? Or just sum it and use the total?
+
+```{r}
+#county_clusters <- kmeans(na.omit(lamp_by_county), 4)
 ```
