@@ -25,6 +25,7 @@ library(sf)
 library(openxlsx)
 library(stringr)
 library(corrplot)
+library(stringr)
 ```
 
 ## Load community stocks data
@@ -108,7 +109,6 @@ summary_stats <- comm_stocks %>%
     median = median(value),
     sd = sd(value),
     max = max(value),
-    
     min = min(value)
   )
 
@@ -126,9 +126,92 @@ lamp <- read.xlsx(lamp_url, sheet = 'LAMP Dataset 2006 to 2023')
 print(head(lamp))
 ```
 
-### Load county to zip crosswalk data from HUD
+### Load city lat/lon dataset
 
-Dataset was downloaded from HUD [site](https://www.huduser.gov/portal/datasets/usps_crosswalk.html "HUD site"). Note: you must be registered and logged in to access data.
+Loaded directly from [GitHub repo](https://github.com/kelvins/US-Cities-Database "city lat/lon data dump").
+
+Going to try to join to cities from LAMP dataset.
+
+```{r}
+url <- 'https://raw.githubusercontent.com/kelvins/US-Cities-Database/main/csv/us_cities.csv'
+
+city_loc <- read.csv(url)
+```
+
+Prep data for merge by renaming some columns, converting city names to all lower case in both data sets to ensure clean join. Note: there are some cities in the city_loc dataset that have more than one row, I think because they are bisected by county lines, so I dealt with that short list of issues by grouping them by city and state and selecting the first row in the group.
+
+Also, there are three remaining rows in the LAMP data that don't have cities listed, so there are no coords for them, but I could track those down and fix them manually.
+
+```{r}
+lamp <- lamp %>%
+  rename(
+    state = State,
+    city = City.2
+    ) %>%
+  mutate(city = str_squish(str_trim(tolower(city)))) %>%
+  filter(!state %in% c('HI', 'AK', 'PR'))
+
+city_loc <- city_loc %>%
+  select(-c(ID, COUNTY)) %>%
+  rename(
+    city = CITY,
+    state = STATE_CODE
+  ) %>%
+  mutate(city = str_squish(str_trim(tolower(city)))) %>%
+  group_by(city, state) %>%
+  filter(row_number()==1) %>% 
+  ungroup()
+
+# check how many cities in LAMP data are in city_loc data
+print(length(unique(lamp$city)))
+print(length(unique(lamp$city) %in% city_loc$city))
+
+# do the join
+lamp <- merge(lamp, city_loc, by = c('city', 'state'), all.x = TRUE)
+
+# convert to sf object
+lamp_sf <- lamp %>% 
+  drop_na(LATITUDE, LONGITUDE) %>%
+  st_as_sf(coords = c("LONGITUDE", "LATITUDE")) %>%
+  st_set_crs(4326) %>%
+  st_transform(st_crs(comm_stocks_geo))
+```
+
+### Add LAMP grant points to the map
+
+```{r}
+ggplot(comm_stocks_geo) +
+  geom_sf(aes(fill = food_secure)) +
+  geom_sf(
+    data = lamp_sf,
+    size = 1.5,
+    alpha = .5,
+    color = 'purple',
+    fill = 'purple'
+    ) +
+  scale_fill_distiller(
+    name="Food Security", 
+    palette = "BrBG",
+    direction = 1
+    ) +
+  theme_void() +
+  theme(legend.position = "bottom",
+        legend.key.width = unit(2,"cm"),
+        legend.key.height = unit(0.2,"cm")
+  )
+```
+
+### Load county to zip code crosswalk data from HUD
+
+Dataset was downloaded from HUD [site](https://www.huduser.gov/portal/datasets/usps_crosswalk.html "HUD site"). Note: you must be registered and logged in to access data. Note: page 6 of [this document](https://www.huduser.gov/portal/periodicals/cityscpe/vol20num2/ch16.pdf "HUD data explainer") explains the data.
+
+`res_ratio` column is the ratio of residential addresses.
+
+`bus_ratio` column is the ratio of business addresses
+
+`oth_ratio` column is the ratio of other addresses to the total number of other addresses in the entire ZIP.
+
+`tot_ratio` column is the total ratio of all addresses to the total number of addresses in the entire ZIP.
 
 ```{r}
 crosswalk <- read.xlsx('data/ZIP_COUNTY_122023.xlsx', sheet = 1)
