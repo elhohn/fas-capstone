@@ -28,6 +28,7 @@ library(openxlsx)
 library(stringr)
 library(corrplot)
 library(stringr)
+library(NbClust)
 ```
 
 ## Load community stocks data
@@ -87,9 +88,21 @@ Home Mortgage Disclosure Act
 
 ### Check out some clustering approaches
 
+First, trying out using the `NbClust` package to determine the optimal number of clusters.
+
 ```{r}
-kc <- kmeans(na.omit(comm_stocks_wide[, 2:ncol(comm_stocks_wide)]), 4)
+data <- na.omit(comm_stocks_wide[, 2:ncol(comm_stocks_wide)])
+result <- NbClust(data, diss = NULL, distance = "euclidean", min.nc = 2, max.nc = 30, 
+                  method = "ward.D2", index = "kl")
+
+result$All.index
+result$Best.nc
+result$Best.partition
+
+#kc <- kmeans(na.omit(comm_stocks_wide[, 2:ncol(comm_stocks_wide)]), 4)
 ```
+
+Results are not great. It is currently not showing a lot of homogeneity across clusters, and not clear winner for optimal number of clusters.
 
 ### Load counties shapefile and join to community stocks data
 
@@ -245,6 +258,61 @@ ggplot(lamp_by_county) +
 
 Need to figure out how to account for multiple years of grants, maybe? Or just sum it and use the total?
 
+I'm going to start by summing all grants within a county and removing the time component...
+
 ```{r}
-#county_clusters <- kmeans(na.omit(lamp_by_county), 4)
+# 
+lamp_county_summary <- lamp_by_county %>%
+  select(-c("Organization", "Zip", "Project.Congressional.District", "Project.Title",
+            "Project.Abstract/Goal", "Project.Start.Date", "Project.End.Date",
+            "Not.Specified", "Project.Keywords", "StoryMap.Link", "Congressional.District",
+            "Seed.Nof.Success.Highlights", "STATE_NAME", "Entity.Type", "Year", 
+            "Unique.Project.Number", "Grant.Type", "Project.Type", "Project.Count",
+            "Match.Amount.(Final)", "Total.Project.Cost", "total_grant"
+            )) %>%
+  drop_na() %>%
+  summarise(across(Award.Amount:Value.Chain.Coordination, ~ sum(.x, na.rm = TRUE)))
+
+cluster_res <- lamp_county_summary %>% 
+  select(-c(GEOID)) %>%
+  st_drop_geometry() %>%
+  NbClust(
+    diss = NULL, distance = "euclidean", min.nc = 2, max.nc = 30, 
+    method = "ward.D2", index = "kl")
+
+cluster_res$All.index
+cluster_res$Best.nc
+membership <- cluster_res$Best.partition
+
+# add cluster membership vector to 
+lamp_county_summary$cluster_id <- membership
+```
+
+Add membership to map
+
+```{r}
+ggplot() +
+  # geom_sf(
+  #   data = comm_stocks_geo,
+  #   aes(fill = food_secure)) +
+  geom_sf(
+    data = lamp_county_summary,
+    aes(
+      fill = cluster_id
+    ),
+    size = 1.5,
+    alpha = .5#,
+    # color = 'purple',
+    # fill = 'purple'
+    ) +
+  # scale_fill_distiller(
+  #   name="Food Security", 
+  #   palette = "BrBG",
+  #   direction = 1
+  #   ) +
+  theme_void() +
+  theme(legend.position = "bottom",
+        legend.key.width = unit(2,"cm"),
+        legend.key.height = unit(0.2,"cm")
+  )
 ```
