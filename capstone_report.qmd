@@ -238,14 +238,63 @@ lamp_by_county <- counties %>%
   st_join(lamp_sf, join = st_contains, left = TRUE) %>%
   group_by(GEOID) %>%
   mutate(total_grant = sum(Award.Amount))
+```
 
-ggplot(lamp_by_county) +
-  geom_sf(aes(fill = total_grant)) +
+### Look at distribution of funding
+
+This should probably be per capita?
+
+```{r}
+pop_url <- 'https://www.ers.usda.gov/webdocs/DataFiles/48747/PopulationEstimates.csv?v=8269.9'
+
+pop <- read.csv(pop_url) %>%
+  filter(Attribute == 'CENSUS_2020_POP',
+         FIPStxt != 0) %>%
+  select(FIPStxt, Value) %>%
+  rename(population_2020 = Value)
+
+# re-use function from earlier to add leading zeros to FIPS
+pop$FIPStxt <- sapply(pop$FIPStxt, add_leading_zero)
+
+# clean up lamp data and add total county grant $ column before joining
+lamp_county_summary <- lamp_by_county %>%
+  select(-c("Organization", "Zip", "Project.Congressional.District", "Project.Title",
+            "Project.Abstract/Goal", "Project.Start.Date", "Project.End.Date",
+            "Not.Specified", "Project.Keywords", "StoryMap.Link", "Congressional.District",
+            "Seed.Nof.Success.Highlights", "STATE_NAME", "Entity.Type", "Year", 
+            "Unique.Project.Number", "Grant.Type", "Project.Type", "Project.Count",
+            "Match.Amount.(Final)", "Total.Project.Cost", "total_grant"
+            )) %>%
+  drop_na() %>%
+  summarise(across(Award.Amount:Value.Chain.Coordination, ~ sum(.x, na.rm = TRUE)))
+
+lamp_county_summary <- lamp_county_summary %>%
+  merge(pop, by.x = 'GEOID', by.y = 'FIPStxt') %>%
+  mutate(award_per_capita = Award.Amount / population_2020) %>%
+  mutate(centroid = st_centroid(geometry))
+
+# change active geometry column to "centroid"
+lamp_county_summary <- st_set_geometry(lamp_county_summary, "centroid")
+```
+
+Add points to map sized by per capita funding
+
+```{r}
+ggplot() +
+  geom_sf(
+    data = comm_stocks_geo,
+    aes(fill = food_secure)) +
+  geom_sf(
+    data = lamp_county_summary,
+    aes(size = award_per_capita),
+    alpha = .5,
+    color = 'purple',
+    fill = 'purple'
+    ) +
   scale_fill_distiller(
-    name="Award Amount", 
-    palette = "Greens",
-    direction = 1,
-    na.value = 'grey75'
+    name="Food Security", 
+    palette = "BrBG",
+    direction = 1
     ) +
   theme_void() +
   theme(legend.position = "bottom",
@@ -261,18 +310,6 @@ Need to figure out how to account for multiple years of grants, maybe? Or just s
 I'm going to start by summing all grants within a county and removing the time component...
 
 ```{r}
-# 
-lamp_county_summary <- lamp_by_county %>%
-  select(-c("Organization", "Zip", "Project.Congressional.District", "Project.Title",
-            "Project.Abstract/Goal", "Project.Start.Date", "Project.End.Date",
-            "Not.Specified", "Project.Keywords", "StoryMap.Link", "Congressional.District",
-            "Seed.Nof.Success.Highlights", "STATE_NAME", "Entity.Type", "Year", 
-            "Unique.Project.Number", "Grant.Type", "Project.Type", "Project.Count",
-            "Match.Amount.(Final)", "Total.Project.Cost", "total_grant"
-            )) %>%
-  drop_na() %>%
-  summarise(across(Award.Amount:Value.Chain.Coordination, ~ sum(.x, na.rm = TRUE)))
-
 cluster_res <- lamp_county_summary %>% 
   select(-c(GEOID)) %>%
   st_drop_geometry() %>%
