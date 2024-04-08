@@ -1,5 +1,5 @@
 ---
-title: "Understanding the relationship between stocks of community wealth and food system"
+title: "Assessing the relationship between county-level stocks of community wealth and food system investment in the United States"
 author: "Elliot Hohn"
 format: html
 editor: visual
@@ -7,11 +7,15 @@ editor: visual
 
 ## Introduction
 
-Community wealth quantification outline.
+The intersection of community wealth and United States Department of Agriculture's (USDA) support of local and regional food system in the form of grants represents a critical area of study for understanding the dynamics of local food systems. In recent years, the USDA has implemented various grant programs aimed at enhancing local and regional food markets, among which the Local Agriculture Market Program (LAMP) has been prominent. These grants are designed to support the development and expansion of local food enterprises, improve market opportunities for producers, and ultimately, enhance access to fresh, locally sourced food for consumers. The efficacy of such programs, however, may significantly depend on the socioeconomic fabric of the communities they aim to serve, particularly the wealth and resources available within these communities.
 
-LAMP grant program description.
+Community wealth, encompassing a range of economic indicators from median income and employment rates to more complex measures of economic diversity and resilience, provides a multifaceted view of the local economic environment. This wealth not only influences the immediate capacity of communities to engage with and benefit from USDA grants but may also affect the long-term sustainability and impact of the projects funded by such grants. Thus, exploring the relationship between community wealth metrics and USDA grant spending, especially under programs like LAMP, offers valuable insights into how federal funding can be optimized to support local food systems in diverse economic contexts.
 
-Hypothesis re: relationship between the two.
+This paper seeks to bridge the gap in the literature by conducting a comprehensive analysis of county-level community wealth metrics and their relationship with LAMP grant spending on local food systems. By employing a mix of descriptive statistics, spatial analysis, and cluster analysis, we aim to identify patterns and disparities in grant allocation and utilization across counties with varying levels of wealth. This analysis is particularly pertinent in the context of increasing recognition of the role local food systems play in promoting food security, economic development, and environmental sustainability.
+
+Moreover, by focusing on LAMP grants, this study delves into a specific and impactful area of USDA's efforts to bolster local and regional food markets. These grants, which support a wide range of activities from infrastructure development to marketing and strategic planning for local food initiatives, serve as a critical tool for enhancing the agricultural economy at the local level. Understanding how these grants interact with the underlying community wealth will not only provide a clearer picture of the current landscape of federal support for local food systems but also offer insights into how such support can be tailored to meet the unique needs of different communities.
+
+This paper contributes to the burgeoning field of agricultural economics and public policy by highlighting the nuanced ways in which federal grant programs intersect with local economic realities to shape the food landscape. Through a nuanced analysis of LAMP grant spending and community wealth metrics, we offer a comprehensive examination of the factors that contribute to the success and sustainability of local food systems initiatives, thereby informing future policy and program development in this vital sector.
 
 ## Methods
 
@@ -68,6 +72,7 @@ I think for now I'm going to use the mean across all years for any given variabl
 comm_stocks_wide <- comm_stocks %>%
   select(fips, year, variable_name, value) %>%
   group_by(fips, variable_name) %>%
+  filter(fips != 0) %>%
   summarise(value = mean(value)) %>%
   ungroup() %>%
   pivot_wider(names_from = variable_name, values_from = value)
