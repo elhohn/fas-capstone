@@ -1,13 +1,22 @@
 ---
-title: "Assessing the relationship between county-level stocks of community wealth and food system investment in the United States"
+title: "Assessing the relationship between county-level indicators of community wealth and food system investment in the United States"
 author: "Elliot Hohn"
-format: html
+format:
+  html:
+    code-fold: true
+    code-summary: "Show the code"
 editor: visual
 ---
 
+## Purpose
+
+This markdown file is sort of a hybrid between an analytic script and a project report – it contains the narrative description of the project, methods, discussion, etc., but also all of the code for loading, cleaning, exploring, and analyzing the data, in addition to the code for creating plots, tables, etc. The reason for this is that I intend to solicit feedback from multiple people, some of whom will be interested in the code, and others who won't be interested in that at all. This format allows me to share the same output (pdf or html) with everyone to avoid separating the contextual information from the analysis itself.
+
+In the end, this might get split into two components – one for the report and separate one for the data analysis. That's all TBD at this point.
+
 ## Introduction
 
-The intersection of community wealth and United States Department of Agriculture's (USDA) support of local and regional food system in the form of grants represents a critical area of study for understanding the dynamics of local food systems. In recent years, the USDA has implemented various grant programs aimed at enhancing local and regional food markets, among which the Local Agriculture Market Program (LAMP) has been prominent. These grants are designed to support the development and expansion of local food enterprises, improve market opportunities for producers, and ultimately, enhance access to fresh, locally sourced food for consumers. The efficacy of such programs, however, may significantly depend on the socioeconomic fabric of the communities they aim to serve, particularly the wealth and resources available within these communities.
+The intersection of community wealth and support of local and regional food system in the form of federal grants represents a critical area of study for understanding the dynamics of local food systems. In recent years, the USDA has implemented various grant programs aimed at enhancing local and regional food markets, among which the Local Agriculture Market Program (LAMP) has been prominent. These grants are designed to support the development and expansion of local food enterprises, improve market opportunities for producers, and ultimately, enhance access to fresh, locally sourced food for consumers. The efficacy of such programs, however, may significantly depend on the socioeconomic fabric of the communities they aim to serve, particularly the wealth and resources available within these communities.
 
 Community wealth, encompassing a range of economic indicators from median income and employment rates to more complex measures of economic diversity and resilience, provides a multifaceted view of the local economic environment. This wealth not only influences the immediate capacity of communities to engage with and benefit from USDA grants but may also affect the long-term sustainability and impact of the projects funded by such grants. Thus, exploring the relationship between community wealth metrics and USDA grant spending, especially under programs like LAMP, offers valuable insights into how federal funding can be optimized to support local food systems in diverse economic contexts.
 
@@ -19,46 +28,79 @@ This paper contributes to the burgeoning field of agricultural economics and pub
 
 ## Methods
 
-Plan right now is load county level community wealth data, and LAMP grant data, then perform cluster analysis on LAMP dataset
+(TBD)
 
-From [covid cluster analysis paper](https://www.biorxiv.org/content/biorxiv/early/2020/11/12/2020.11.12.379537.full.pdf): "This analysis was conducted in three stages. In Stage 0, county-level data were gathered from several sources, merged, and preprocessed for consistency. In Stage 1, time series clustering was performed on the number of newly reported confirmed COVID 19 cases per day (LAMP funding per year in our case?). Finally, in Stage 2, an explanatory model was fit to describe the relationship between cluster membership and several socioeconomic and political factors (community wealth factors?) describing the counties."
+```{r environment setup}
+#| include: false
 
-## Environment setup
-
-```{r}
 library(tidyverse)
 library(sf)
 library(openxlsx)
 library(stringr)
 library(corrplot)
-library(stringr)
 library(NbClust)
+
+options(scipen = 999)
 ```
 
-## Load community stocks data
+## Load and prepare "Indicators of Community Wealth" data
 
-Load data directly from CSU [github repo](https://github.com/CSU-Local-and-Regional-Food-Systems "CSU Local and Regional Food Systems repo").
+The original source of the community wealth data used in this analysis is from Schmitt et al. (2021). However, additional data processing has been done by researchers at Colorado State University (CSU) as part of the CSU Local and Regional Food Systems work, specifically the Indicators of Community Wealth data set included in the USDA-AMS-Data-and-Metrics [repository](https://github.com/CSU-Local-and-Regional-Food-Systems/USDA-AMS-Data-and-Metrics/tree/main) publicly available on GitHub (accessed March 20, 2024). Details on how the original [data](https://github.com/schmi-ny/County-Level-Community-Capital-Stocks/blob/main/CapitalPCs061521.xlsx) from Schmitt et al. (2021) were processed are described in an RMarkdown [file](https://github.com/CSU-Local-and-Regional-Food-Systems/USDA-AMS-Data-and-Metrics/blob/main/Indicators%20of%20Community%20Wealth/community_wealth.Rmd) within CSU's repository. The processed data is what is used in this analysis, loaded directly from the CSU GitHub repository.
 
-```{r}
-comm_stocks_url <- 'https://raw.githubusercontent.com/CSU-Local-and-Regional-Food-Systems/USDA-AMS-Data-and-Metrics/main/Indicators%20of%20Community%20Wealth/community_wealth.csv'
-comm_stocks <- read.csv(comm_stocks_url)
+After loading the data, a bit of exploratory data analysis is performed to better understand the data, then the values are normalized prior to performing a cluster analysis.
 
-# Function to add leading 0 to 4-digit fips values in comm_stocks
+::: callout-note
+The community wealth data has a year value associated with it, so there are often multiple values for a given metric for each county, each associated with a different year. I am not certain how to deal with this right now, so I'm calculating the mean of these values and removing the date.
+:::
+
+```{r community wealth data prep}
+#| output: false
+
+comm_wealth_url <- 'https://raw.githubusercontent.com/CSU-Local-and-Regional-Food-Systems/USDA-AMS-Data-and-Metrics/main/Indicators%20of%20Community%20Wealth/community_wealth.csv'
+comm_wealth <- read.csv(comm_wealth_url) %>%
+  filter(fips > 100) # remove national level rows
+
+# Function to add leading 0 to 4-digit fips values in comm_wealth to facilitate later joins
 add_leading_zero <- function(x) {
   # Check if the number has 4 digits
   ifelse(nchar(x) == 4, paste0("0", x), x)
 }
 
-comm_stocks$fips <- sapply(comm_stocks$fips, add_leading_zero)
-print(head(comm_stocks))
+# apply funcion to fips column
+comm_wealth$fips <- sapply(comm_wealth$fips, add_leading_zero)
+
+# make sure all fips codes are 5 digits
+print(sum(nchar(comm_wealth$fips) != 5)) # should equal 0 if all fips codes are 5 digits
 ```
 
-```{r}
-# ggplot(comm_stocks, aes(x = value)) + 
-#   geom_histogram(fill = 'red', colour = 'black') + 
-#   facet_wrap(variable_name ~ .)
+Show summary stats for all metrics in community wealth data.
 
-print(unique(comm_stocks$variable_name))
+```{r reshape community wealth and summarize}
+#| warning: false
+#| fig-height: 10
+
+# reshape data from tall to wide to give each variable its own column
+comm_wealth_wide <- comm_wealth %>%
+  select(fips, year, variable_name, value) %>%
+  group_by(fips, variable_name) %>%
+  summarise(value = mean(value, na.rm = TRUE)) %>%
+  ungroup() %>%
+  pivot_wider(names_from = variable_name, values_from = value)
+
+print(summary(comm_wealth_wide))
+
+comm_wealth_wide %>%
+  pivot_longer(!fips, names_to = "variable", values_to = "value") %>%
+  ggplot(aes(value)) + 
+  geom_histogram(
+    bins = 15
+  ) + 
+  facet_wrap(
+    ~variable, 
+    scales = 'free',
+    ncol = 5,
+    shrink = FALSE
+    )
 ```
 
 ### Check correlations between variables
@@ -68,35 +110,22 @@ There are different years associated with the rows of data...how should I deal w
 I think for now I'm going to use the mean across all years for any given variable. A quick look at the data indicates that the values don't shift drastically from year to year, unsurprisingly.
 
 ```{r}
-# reshape data from tall to wide to give each variable its own column
-comm_stocks_wide <- comm_stocks %>%
-  select(fips, year, variable_name, value) %>%
-  group_by(fips, variable_name) %>%
-  filter(fips != 0) %>%
-  summarise(value = mean(value)) %>%
-  ungroup() %>%
-  pivot_wider(names_from = variable_name, values_from = value)
-```
-
-```{r}
 # correlation matrix
-correlation <- cor(comm_stocks_wide[, 2:ncol(comm_stocks_wide)], use = "complete.obs")
+correlation <- cor(comm_wealth_wide[, 2:ncol(comm_wealth_wide)], use = "complete.obs")
 corrplot(correlation, method = 'square', tl.cex = 0.4, tl.col = 'black', tl.srt = 45,
          type = 'upper', order = "hclust")
 ```
 
 ### Ideas for additional variables
 
-Rural/Underserved Counties: The Consumer Financial Bureau6 provides a list of rural or
-underserved counties based on the Bureau’s interpretive rule (Regulation Z) using data from the
-Home Mortgage Disclosure Act
+Rural/Underserved Counties: The Consumer Financial Bureau6 provides a list of rural or underserved counties based on the Bureau’s interpretive rule (Regulation Z) using data from the Home Mortgage Disclosure Act
 
 ### Check out some clustering approaches
 
 First, trying out using the `NbClust` package to determine the optimal number of clusters.
 
 ```{r}
-data <- na.omit(comm_stocks_wide[, 2:ncol(comm_stocks_wide)])
+data <- na.omit(comm_wealth_wide[, 2:ncol(comm_wealth_wide)])
 result <- NbClust(data, diss = NULL, distance = "euclidean", min.nc = 2, max.nc = 30, 
                   method = "ward.D2", index = "kl")
 
@@ -104,7 +133,7 @@ result$All.index
 result$Best.nc
 result$Best.partition
 
-#kc <- kmeans(na.omit(comm_stocks_wide[, 2:ncol(comm_stocks_wide)]), 4)
+#kc <- kmeans(na.omit(comm_wealth_wide[, 2:ncol(comm_wealth_wide)]), 4)
 ```
 
 Results are not great. It is currently not showing a lot of homogeneity across clusters, and not clear winner for optimal number of clusters.
@@ -117,9 +146,9 @@ counties <- st_read('data/cb_2021_us_county_20m/cb_2021_us_county_20m.shp') %>%
   select(GEOID, geometry) %>%
   st_transform(5070)
 
-comm_stocks_geo <- merge(counties, comm_stocks_wide, by.x = 'GEOID', by.y = 'fips')
+comm_wealth_geo <- merge(counties, comm_wealth_wide, by.x = 'GEOID', by.y = 'fips')
 
-ggplot(comm_stocks_geo) +
+ggplot(comm_wealth_geo) +
   geom_sf(aes(fill = food_secure)) +
   scale_fill_distiller(
     name="Food Security", 
@@ -134,7 +163,7 @@ ggplot(comm_stocks_geo) +
 ```
 
 ```{r}
-summary_stats <- comm_stocks %>%
+summary_stats <- comm_wealth %>%
   group_by(variable_name) %>%
   summarize(
     mean = mean(value),
@@ -206,13 +235,13 @@ lamp_sf <- lamp %>%
   drop_na(LATITUDE, LONGITUDE) %>%
   st_as_sf(coords = c("LONGITUDE", "LATITUDE")) %>%
   st_set_crs(4326) %>%
-  st_transform(st_crs(comm_stocks_geo))
+  st_transform(st_crs(comm_wealth_geo))
 ```
 
 ### Add LAMP grant points to the map
 
 ```{r}
-ggplot(comm_stocks_geo) +
+ggplot(comm_wealth_geo) +
   geom_sf(aes(fill = food_secure)) +
   geom_sf(
     data = lamp_sf,
@@ -287,7 +316,7 @@ Add points to map sized by per capita funding
 ```{r}
 ggplot() +
   geom_sf(
-    data = comm_stocks_geo,
+    data = comm_wealth_geo,
     aes(fill = food_secure)) +
   geom_sf(
     data = lamp_county_summary,
@@ -315,18 +344,18 @@ Need to figure out how to account for multiple years of grants, maybe? Or just s
 I'm going to start by summing all grants within a county and removing the time component...
 
 ```{r}
-cluster_res <- lamp_county_summary %>% 
-  select(-c(GEOID)) %>%
+cluster_res <- lamp_county_summary %>%
+  select(-c(GEOID, geometry)) %>%
   st_drop_geometry() %>%
   NbClust(
-    diss = NULL, distance = "euclidean", min.nc = 2, max.nc = 30, 
+    diss = NULL, distance = "euclidean", min.nc = 2, max.nc = 30,
     method = "ward.D2", index = "kl")
 
 cluster_res$All.index
 cluster_res$Best.nc
 membership <- cluster_res$Best.partition
 
-# add cluster membership vector to 
+# add cluster membership vector to
 lamp_county_summary$cluster_id <- membership
 ```
 
@@ -335,7 +364,7 @@ Add membership to map
 ```{r}
 ggplot() +
   # geom_sf(
-  #   data = comm_stocks_geo,
+  #   data = comm_wealth_geo,
   #   aes(fill = food_secure)) +
   geom_sf(
     data = lamp_county_summary,
