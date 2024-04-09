@@ -43,7 +43,9 @@ library(NbClust)
 options(scipen = 999)
 ```
 
-## Load and prepare "Indicators of Community Wealth" data
+## Community wealth data
+
+### Load and prepare data
 
 The original source of the community wealth data used in this analysis is from Schmitt et al. (2021). However, additional data processing has been done by researchers at Colorado State University (CSU) as part of the CSU Local and Regional Food Systems work, specifically the Indicators of Community Wealth data set included in the USDA-AMS-Data-and-Metrics [repository](https://github.com/CSU-Local-and-Regional-Food-Systems/USDA-AMS-Data-and-Metrics/tree/main) publicly available on GitHub (accessed March 20, 2024). Details on how the original [data](https://github.com/schmi-ny/County-Level-Community-Capital-Stocks/blob/main/CapitalPCs061521.xlsx) from Schmitt et al. (2021) were processed are described in an RMarkdown [file](https://github.com/CSU-Local-and-Regional-Food-Systems/USDA-AMS-Data-and-Metrics/blob/main/Indicators%20of%20Community%20Wealth/community_wealth.Rmd) within CSU's repository. The processed data is what is used in this analysis, loaded directly from the CSU GitHub repository.
 
@@ -72,6 +74,8 @@ comm_wealth$fips <- sapply(comm_wealth$fips, add_leading_zero)
 # make sure all fips codes are 5 digits
 print(sum(nchar(comm_wealth$fips) != 5)) # should equal 0 if all fips codes are 5 digits
 ```
+
+#### Summary stats and distributions
 
 Show summary stats for all metrics in community wealth data.
 
@@ -103,44 +107,41 @@ comm_wealth_wide %>%
     )
 ```
 
-### Check correlations between variables
+#### Normalize values
 
-There are different years associated with the rows of data...how should I deal with this? Filter to only the newest data? Use the average? The grants data will also have a date associate with it, but I was thinking those grants would all be summed to get a "total amount invested" value.
+The values need to be normalized before doing a cluster analysis, so adjust all values to be within range from 0 to 1.
 
-I think for now I'm going to use the mean across all years for any given variable. A quick look at the data indicates that the values don't shift drastically from year to year, unsurprisingly.
+```{r normalize community wealth data}
+#| warning: false
+#| fig-height: 10
+ 
+# List of columns to normalize
+cols_to_normalize <- names(comm_wealth_wide)[names(comm_wealth_wide) != 'fips']
 
-```{r}
-# correlation matrix
-correlation <- cor(comm_wealth_wide[, 2:ncol(comm_wealth_wide)], use = "complete.obs")
-corrplot(correlation, method = 'square', tl.cex = 0.4, tl.col = 'black', tl.srt = 45,
-         type = 'upper', order = "hclust")
+# normalize the data to range of [0, 1]
+comm_wealth_wide[cols_to_normalize] <- apply(comm_wealth_wide[cols_to_normalize], 2, function(x) (x - min(x, na.rm = TRUE)) / (max(x, na.rm = TRUE) - min(x, na.rm = TRUE)))
+
+# remake histograms to check ranges
+comm_wealth_wide %>%
+  pivot_longer(!fips, names_to = "variable", values_to = "value") %>%
+  ggplot(aes(value)) + 
+  geom_histogram(
+    bins = 15
+  ) + 
+  facet_wrap(
+    ~variable, 
+    scales = 'free_y',
+    ncol = 5,
+    shrink = FALSE
+    )
 ```
-
-### Ideas for additional variables
-
-Rural/Underserved Counties: The Consumer Financial Bureau6 provides a list of rural or underserved counties based on the Bureau’s interpretive rule (Regulation Z) using data from the Home Mortgage Disclosure Act
-
-### Check out some clustering approaches
-
-First, trying out using the `NbClust` package to determine the optimal number of clusters.
-
-```{r}
-data <- na.omit(comm_wealth_wide[, 2:ncol(comm_wealth_wide)])
-result <- NbClust(data, diss = NULL, distance = "euclidean", min.nc = 2, max.nc = 30, 
-                  method = "ward.D2", index = "kl")
-
-result$All.index
-result$Best.nc
-result$Best.partition
-
-#kc <- kmeans(na.omit(comm_wealth_wide[, 2:ncol(comm_wealth_wide)]), 4)
-```
-
-Results are not great. It is currently not showing a lot of homogeneity across clusters, and not clear winner for optimal number of clusters.
 
 ### Load counties shapefile and join to community stocks data
 
-```{r}
+The county-level community wealth data is summarized by FIPS code, so I'm adding county polygons so we can make the data set a spatial sf object for making maps and doing spatial joins.
+
+```{r county_polygons}
+
 counties <- st_read('data/cb_2021_us_county_20m/cb_2021_us_county_20m.shp') %>%
   filter(!STATE_NAME %in% c('Alaska', 'Hawaii', 'Puerto Rico')) %>%
   select(GEOID, geometry) %>%
@@ -162,48 +163,62 @@ ggplot(comm_wealth_geo) +
   )
 ```
 
-```{r}
-summary_stats <- comm_wealth %>%
-  group_by(variable_name) %>%
-  summarize(
-    mean = mean(value),
-    median = median(value),
-    sd = sd(value),
-    max = max(value),
-    min = min(value)
-  )
+### Check correlations between variables
 
-print(summary_stats)
+My thinking here is that variables that are highly correlated can be combined into a single variable?
+
+```{r correlation matrix}
+
+# correlation matrix
+correlation <- cor(comm_wealth_wide[, 2:ncol(comm_wealth_wide)], use = "complete.obs")
+corrplot(correlation, method = 'square', tl.cex = 0.4, tl.col = 'black', tl.srt = 45,
+         type = 'upper', order = "hclust")
 ```
 
-## Load LAMP data
+### Ideas for additional variables
+
+Rural/Underserved Counties: The Consumer Financial Bureau provides a list of rural or underserved counties based on the Bureau’s interpretive rule (Regulation Z) using data from the Home Mortgage Disclosure Act
+
+Urban vs rural vs peri-urban?
+
+## LAMP data
+
+### Load and clean/prep data
 
 Data downloaded directly from URL on the LAMP Navigator [webpage](https://www.ams.usda.gov/data/lamp-navigator "LAMP Navigator web pagef").
 
-```{r}
-lamp_url <- 'https://www.ams.usda.gov/sites/default/files/media/LAMPDatasetandDataDictionary.xlsx'
+```{r load lamp data}
 
+lamp_url <- 'https://www.ams.usda.gov/sites/default/files/media/LAMPDatasetandDataDictionary.xlsx'
 lamp <- read.xlsx(lamp_url, sheet = 'LAMP Dataset 2006 to 2023')
-print(head(lamp))
 ```
 
 ### Load city lat/lon dataset
 
 Loaded directly from [GitHub repo](https://github.com/kelvins/US-Cities-Database "city lat/lon data dump").
 
-Going to try to join to cities from LAMP dataset.
+This is necessary because the LAMP data only has a city and state associated with each grant award, so city location data will be joined to th lamp data to add lat/lon point geometry information to each of the awards.
 
-```{r}
+```{r load city location data}
+
 url <- 'https://raw.githubusercontent.com/kelvins/US-Cities-Database/main/csv/us_cities.csv'
-
 city_loc <- read.csv(url)
 ```
 
-Prep data for merge by renaming some columns, converting city names to all lower case in both data sets to ensure clean join. Note: there are some cities in the city_loc dataset that have more than one row, I think because they are bisected by county lines, so I dealt with that short list of issues by grouping them by city and state and selecting the first row in the group.
+#### Join LAMP grant data with city lat/lon data
 
-Also, there are three remaining rows in the LAMP data that don't have cities listed, so there are no coords for them, but I could track those down and fix them manually.
+Prep data for merge by renaming some columns, converting city names to all lower case in both data sets to ensure clean join.
 
-```{r}
+::: callout-note
+Note: there are some cities in the city_loc dataset that have more than one row, I think because they are bisected by county lines, so I dealt with that short list of issues by grouping them by city and state and selecting the first row in the group.
+
+Also, there are three remaining rows in the LAMP data that don't have cities listed, so there are no coords for them, but I could track those down and fix them manually at some point.
+:::
+
+After joining by city and state, the data set is converted to a spatial sf object so the point data can be spatially joined with the county multipolygon data.
+
+```{r join lamp to city lat/lon}
+
 lamp <- lamp %>%
   rename(
     state = State,
@@ -224,8 +239,8 @@ city_loc <- city_loc %>%
   ungroup()
 
 # check how many cities in LAMP data are in city_loc data
-print(length(unique(lamp$city)))
-print(length(unique(lamp$city) %in% city_loc$city))
+#print(length(unique(lamp$city)))
+#print(length(unique(lamp$city) %in% city_loc$city))
 
 # do the join
 lamp <- merge(lamp, city_loc, by = c('city', 'state'), all.x = TRUE)
@@ -238,57 +253,37 @@ lamp_sf <- lamp %>%
   st_transform(st_crs(comm_wealth_geo))
 ```
 
-### Add LAMP grant points to the map
-
-```{r}
-ggplot(comm_wealth_geo) +
-  geom_sf(aes(fill = food_secure)) +
-  geom_sf(
-    data = lamp_sf,
-    size = 1.5,
-    alpha = .5,
-    color = 'purple',
-    fill = 'purple'
-    ) +
-  scale_fill_distiller(
-    name="Food Security", 
-    palette = "BrBG",
-    direction = 1
-    ) +
-  theme_void() +
-  theme(legend.position = "bottom",
-        legend.key.width = unit(2,"cm"),
-        legend.key.height = unit(0.2,"cm")
-  )
-```
-
-### Spatial join point data to county polygons
+### Spatial join point data to community wealth spatial data
 
 Need to assign lamp grant point data to county level
 
-```{r}
+```{r join lamp and community wealth}
+
 # crs for each already aligns
 lamp_by_county <- counties %>%
   st_join(lamp_sf, join = st_contains, left = TRUE) %>%
   group_by(GEOID) %>%
-  mutate(total_grant = sum(Award.Amount))
+  mutate(total_grant = sum(Award.Amount)) %>%
+  drop_na(city)
 ```
 
-### Look at distribution of funding
+### Load population data to convert awards to per capita
 
-This should probably be per capita?
+```{r load population data}
 
-```{r}
 pop_url <- 'https://www.ers.usda.gov/webdocs/DataFiles/48747/PopulationEstimates.csv?v=8269.9'
 
 pop <- read.csv(pop_url) %>%
   filter(Attribute == 'CENSUS_2020_POP',
          FIPStxt != 0) %>%
   select(FIPStxt, Value) %>%
-  rename(population_2020 = Value)
+  rename(
+    population_2020 = Value,
+    fips = FIPStxt
+    )
 
 # re-use function from earlier to add leading zeros to FIPS
-pop$FIPStxt <- sapply(pop$FIPStxt, add_leading_zero)
+pop$fips <- sapply(pop$fips, add_leading_zero)
 
 # clean up lamp data and add total county grant $ column before joining
 lamp_county_summary <- lamp_by_county %>%
@@ -303,7 +298,7 @@ lamp_county_summary <- lamp_by_county %>%
   summarise(across(Award.Amount:Value.Chain.Coordination, ~ sum(.x, na.rm = TRUE)))
 
 lamp_county_summary <- lamp_county_summary %>%
-  merge(pop, by.x = 'GEOID', by.y = 'FIPStxt') %>%
+  merge(pop, by.x = 'GEOID', by.y = 'fips') %>%
   mutate(award_per_capita = Award.Amount / population_2020) %>%
   mutate(centroid = st_centroid(geometry))
 
@@ -313,7 +308,8 @@ lamp_county_summary <- st_set_geometry(lamp_county_summary, "centroid")
 
 Add points to map sized by per capita funding
 
-```{r}
+```{r food security and grant per capita map}
+
 ggplot() +
   geom_sf(
     data = comm_wealth_geo,
@@ -337,53 +333,35 @@ ggplot() +
   )
 ```
 
-### Cluster LAMP grant county data
+### Combine all data
 
-Need to figure out how to account for multiple years of grants, maybe? Or just sum it and use the total?
+Join the community wealth data to the LAMP grant data
 
-I'm going to start by summing all grants within a county and removing the time component...
+```{r combine all data}
 
-```{r}
-cluster_res <- lamp_county_summary %>%
-  select(-c(GEOID, geometry)) %>%
+all_data <- comm_wealth_wide %>%
+  merge(lamp_county_summary, by.x = 'fips', by.y = 'GEOID', all.x = TRUE) %>%
   st_drop_geometry() %>%
-  NbClust(
-    diss = NULL, distance = "euclidean", min.nc = 2, max.nc = 30,
-    method = "ward.D2", index = "kl")
-
-cluster_res$All.index
-cluster_res$Best.nc
-membership <- cluster_res$Best.partition
-
-# add cluster membership vector to
-lamp_county_summary$cluster_id <- membership
+  select(-c(geometry, centroid))
 ```
 
-Add membership to map
+....
 
-```{r}
-ggplot() +
-  # geom_sf(
-  #   data = comm_wealth_geo,
-  #   aes(fill = food_secure)) +
-  geom_sf(
-    data = lamp_county_summary,
-    aes(
-      fill = cluster_id
-    ),
-    size = 1.5,
-    alpha = .5#,
-    # color = 'purple',
-    # fill = 'purple'
-    ) +
-  # scale_fill_distiller(
-  #   name="Food Security", 
-  #   palette = "BrBG",
-  #   direction = 1
-  #   ) +
-  theme_void() +
-  theme(legend.position = "bottom",
-        legend.key.width = unit(2,"cm"),
-        legend.key.height = unit(0.2,"cm")
-  )
+## Cluster analysis
+
+First, trying out using the `NbClust` package to determine the optimal number of clusters.
+
+```{r cluster analysis}
+data <- na.omit(all_data[, 2:ncol(all_data)])
+result <- NbClust(data, diss = NULL, distance = "euclidean", min.nc = 2, max.nc = 30, 
+                  method = "ward.D2", index = "kl")
+
+# result$All.index
+# result$Best.nc
+# result$Best.partition
+
+membership <- result$Best.partition
+
+# add cluster membership vector to
+data$cluster_id <- membership
 ```
