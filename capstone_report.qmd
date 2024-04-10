@@ -39,6 +39,8 @@ library(openxlsx)
 library(stringr)
 library(corrplot)
 library(NbClust)
+library(broom)
+library(caret)
 
 options(scipen = 999)
 ```
@@ -118,8 +120,12 @@ The values need to be normalized before doing a cluster analysis, so adjust all 
 # List of columns to normalize
 cols_to_normalize <- names(comm_wealth_wide)[names(comm_wealth_wide) != 'fips']
 
+normalize <- function(x){
+  (x - min(x, na.rm = TRUE)) / (max(x, na.rm = TRUE) - min(x, na.rm = TRUE))
+}
+
 # normalize the data to range of [0, 1]
-comm_wealth_wide[cols_to_normalize] <- apply(comm_wealth_wide[cols_to_normalize], 2, function(x) (x - min(x, na.rm = TRUE)) / (max(x, na.rm = TRUE) - min(x, na.rm = TRUE)))
+comm_wealth_wide[cols_to_normalize] <- apply(comm_wealth_wide[cols_to_normalize], 2, normalize)
 
 # remake histograms to check ranges
 comm_wealth_wide %>%
@@ -339,10 +345,17 @@ Join the community wealth data to the LAMP grant data
 
 ```{r combine all data}
 
-all_data <- comm_wealth_wide %>%
-  merge(lamp_county_summary, by.x = 'fips', by.y = 'GEOID', all.x = TRUE) %>%
+# for now, just use per capita LAMP funding by county
+lamp_per_cap <- lamp_county_summary %>%
   st_drop_geometry() %>%
-  select(-c(geometry, centroid))
+  select(GEOID, award_per_capita)
+
+# merge and normalize award values
+all_data <- comm_wealth_wide %>%
+  merge(lamp_per_cap, by.x = 'fips', by.y = 'GEOID', all.x = TRUE) %>%
+  st_drop_geometry() %>%
+  mutate(award_per_capita = ifelse(is.na(award_per_capita), 0, award_per_capita)) %>%
+  mutate(award_per_capita = normalize(award_per_capita))
 ```
 
 ....
@@ -352,9 +365,12 @@ all_data <- comm_wealth_wide %>%
 First, trying out using the `NbClust` package to determine the optimal number of clusters.
 
 ```{r cluster analysis}
+
 data <- na.omit(all_data[, 2:ncol(all_data)])
-result <- NbClust(data, diss = NULL, distance = "euclidean", min.nc = 2, max.nc = 30, 
-                  method = "ward.D2", index = "kl")
+
+# note: not sure if award values should be used in clustering or not?
+result <- NbClust(data %>% select(-award_per_capita), diss = NULL, distance = "euclidean",
+                  min.nc = 2, max.nc = 30, method = "ward.D2", index = "kl")
 
 # result$All.index
 # result$Best.nc
@@ -362,6 +378,46 @@ result <- NbClust(data, diss = NULL, distance = "euclidean", min.nc = 2, max.nc 
 
 membership <- result$Best.partition
 
-# add cluster membership vector to
+# add cluster membership vector to data set
 data$cluster_id <- membership
+```
+
+### Regression analysis
+
+```{r regression analysis}
+
+# start with just a few variables as predictors
+predictors <- names(data)[names(data) != 'award_per_capita']
+
+# Prepare the model formula
+formula <- as.formula(paste("award_per_capita ~", paste(predictors, collapse = " + ")))
+
+# Split the data into training and testing sets
+set.seed(123)  # for reproducibility
+index <- createDataPartition(data$award_per_capita, p=0.8, list=FALSE)
+trainData <- data[index, ]
+testData <- data[-index, ]
+
+# Fit the linear regression model
+model <- lm(formula, data=trainData)
+
+# Summarize the model
+summary(model)
+
+# Predict on the testing set
+predictions <- predict(model, newdata=testData)
+
+# Calculate performance metrics, e.g., RMSE
+testData$predictions <- predictions
+RMSE <- sqrt(mean((testData$award_per_capita - testData$predictions)^2))
+print(paste("RMSE: ", RMSE))
+
+# visualize the actual vs. predicted values
+ggplot(testData, aes(x=award_per_capita, y=predictions)) +
+  geom_point() +
+  geom_abline(intercept=0, slope=1, linetype="dashed", color="red") +
+  labs(x="Actual", y="Predicted", title="Actual vs. Predicted Award Per Capita")
+
+# You can further explore the residuals, consider interactions between variables, or try different models.
+
 ```
