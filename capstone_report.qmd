@@ -392,6 +392,61 @@ farm_size <- farms %>%
   mutate(mean_farm_acres = acres / farms)
 ```
 
+### Rural vs Urban data from census?
+
+Use `tidycensus` package to pull in some additional census data to support this analysis. Variable descriptions available [here](https://api.census.gov/data/2020/dec/dhc/variables.html).
+
+```{r get census urban/rural data}
+
+# get county level urban and rural population
+urban_pop <- get_decennial(
+  geography = "county",
+  variables = "H2_002N",
+  year = 2020,
+  sumfile = "dhc") %>%
+  rename(urban_pop = value) %>%
+  select(GEOID, urban_pop)
+
+rural_pop <- get_decennial(
+  geography = "county",
+  variables = "H2_003N",
+  year = 2020,
+  sumfile = "dhc"
+) %>%
+  rename(rural_pop = value) %>%
+  select(GEOID, rural_pop)
+
+urban_rural <- merge(urban_pop, rural_pop, by = 'GEOID') %>%
+  mutate(
+    total_pop = rural_pop + urban_pop,
+    urban_pct = urban_pop / total_pop,
+    rural_pct = rural_pop / total_pop
+    )
+  
+```
+
+### Underserved counties?
+
+From Consumer Financial Bureau data
+
+```{r underserved commnities data}
+
+rural_data_url <- 'https://files.consumerfinance.gov/f/documents/cfpb_rural-list_2024.csv'
+rural_data <- read.csv(rural_data_url)
+rural_data$FIPS.Code <- sapply(rural_data$FIPS.Code, add_leading_zero)
+
+
+underserved_data_url <- 'https://files.consumerfinance.gov/f/documents/cfpb_underserved-list_2024.csv'
+underserved_data <- read.csv(underserved_data_url)
+underserved_data$FIPS.Code <- sapply(underserved_data$FIPS.Code, add_leading_zero)
+
+test <- all_data %>%
+  mutate(
+    is_rural = as.factor(ifelse(fips %in% rural_data$FIPS.Code, 1, 0)),
+    is_underserved = as.factor(ifelse(fips %in% underserved_data$FIPS.Code, 1, 0))
+    )
+```
+
 ### Combine all data
 
 Join the community wealth data to the LAMP grant data
@@ -407,12 +462,15 @@ lamp_per_cap <- lamp_county_summary %>%
 all_data <- comm_wealth_wide %>%
   merge(lamp_per_cap, by.x = 'fips', by.y = 'GEOID', all.x = TRUE) %>%
   st_drop_geometry() %>%
-  mutate(award_per_capita = ifelse(is.na(award_per_capita), 0, award_per_capita)) %>%
-  mutate(award_per_capita = normalize(award_per_capita)) %>%
-  merge(farm_size, by.x = 'fips', by.y = 'GEOID')
+  mutate(
+    award_per_capita = ifelse(is.na(award_per_capita), 0, award_per_capita),
+    award_per_capita = normalize(award_per_capita),
+    is_rural = ifelse(fips %in% rural_data$FIPS.Code, 1, 0),
+    is_underserved = ifelse(fips %in% underserved_data$FIPS.Code, 1, 0)
+    ) %>%
+  merge(farm_size, by.x = 'fips', by.y = 'GEOID') %>%
+  merge(urban_rural %>% select(GEOID, rural_pct), by.x = 'fips', by.y = 'GEOID')
 ```
-
-....
 
 ## Cluster analysis
 
@@ -445,6 +503,8 @@ predictors <- names(data)[names(data) != 'award_per_capita']
 
 # convert cluster_id to factor
 data$cluster_id <- as.factor(data$cluster_id)
+data$is_rural <- as.factor(data$is_rural)
+data$is_underserved <- as.factor(data$is_underserved)
 
 # Prepare the model formula
 formula <- as.formula(paste("award_per_capita ~", paste(predictors, collapse = " + ")))
@@ -477,38 +537,6 @@ ggplot(testData, aes(x=award_per_capita, y=predictions)) +
 
 # You can further explore the residuals, consider interactions between variables, or try different models.
 
-```
-
-### Pull in additional census data
-
-Use `tidycensus` package to pull in some additional census data to support this analysis. Variable descriptions available [here](https://api.census.gov/data/2020/dec/dhc/variables.html).
-
-```{r get census urban/rural data}
-
-# get county level urban and rural population
-urban_pop <- get_decennial(
-  geography = "county",
-  variables = "H2_002N",
-  year = 2020,
-  sumfile = "dhc") %>%
-  rename(urban_pop = value) %>%
-  select(GEOID, urban_pop)
-
-rural_pop <- get_decennial(
-  geography = "county",
-  variables = "H2_003N",
-  year = 2020,
-  sumfile = "dhc"
-) %>%
-  rename(rural_pop = value) %>%
-  select(GEOID, rural_pop)
-
-urban_rural <- merge(urban_pop, rural_pop, by = 'GEOID') %>%
-  mutate(
-    total_pop = rural_pop + urban_pop,
-    urban_pct = urban_pop / total_pop,
-    rural_pct = rural_pop / total_pop
-    )
 ```
 
 ### 
