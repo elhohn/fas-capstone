@@ -192,6 +192,8 @@ Rural/Underserved Counties: The Consumer Financial Bureau provides a list of rur
 
 Urban vs rural vs peri-urban?
 
+Farmland acreage? farm size?
+
 ## LAMP data
 
 ### Load and clean/prep data
@@ -344,6 +346,52 @@ ggplot() +
   )
 ```
 
+### Ag census data?
+
+What about things like total acres of farmland in the county? In nearby counties?
+
+```{r get ag census farmland data}
+
+# run this to see all of your options for data_item argument
+#View(allDataItem)
+
+acres <- getQuickstat(
+  key = ag_census_api_key,
+  program = "CENSUS",
+  data_item = "AG LAND, CROPLAND - ACRES",
+  geographic_level = "COUNTY",
+  domain = "TOTAL",
+  year = "2022",
+  state = NULL,
+  geometry = TRUE,
+  lower48 = TRUE
+) %>% st_drop_geometry()
+
+farms <- getQuickstat(
+  key = ag_census_api_key,
+  program = "CENSUS",
+  data_item = "AG LAND, CROPLAND - NUMBER OF OPERATIONS",
+  geographic_level = "COUNTY",
+  domain = "TOTAL",
+  year = "2022",
+  state = NULL,
+  geometry = TRUE,
+  lower48 = TRUE
+) %>% st_drop_geometry()
+
+acres <- acres %>%
+  select(GEOID, Value) %>%
+  rename(acres = Value)
+
+farms <- farms %>%
+  select(GEOID, Value) %>%
+  rename(farms = Value)
+
+farm_size <- farms %>%
+  merge(acres, by = 'GEOID') %>%
+  mutate(mean_farm_acres = acres / farms)
+```
+
 ### Combine all data
 
 Join the community wealth data to the LAMP grant data
@@ -360,7 +408,8 @@ all_data <- comm_wealth_wide %>%
   merge(lamp_per_cap, by.x = 'fips', by.y = 'GEOID', all.x = TRUE) %>%
   st_drop_geometry() %>%
   mutate(award_per_capita = ifelse(is.na(award_per_capita), 0, award_per_capita)) %>%
-  mutate(award_per_capita = normalize(award_per_capita))
+  mutate(award_per_capita = normalize(award_per_capita)) %>%
+  merge(farm_size, by.x = 'fips', by.y = 'GEOID')
 ```
 
 ....
@@ -396,7 +445,6 @@ predictors <- names(data)[names(data) != 'award_per_capita']
 
 # convert cluster_id to factor
 data$cluster_id <- as.factor(data$cluster_id)
-
 
 # Prepare the model formula
 formula <- as.formula(paste("award_per_capita ~", paste(predictors, collapse = " + ")))
@@ -463,48 +511,4 @@ urban_rural <- merge(urban_pop, rural_pop, by = 'GEOID') %>%
     )
 ```
 
-### Ag census data?
-
-What about things like total acres of farmland in the county? In nearby counties?
-
-```{r get ag census farmland data}
-
-# run this to see all of your options for data_item argument
-#View(allDataItem)
-
-acres <- getQuickstat(
-  key = ag_census_api_key,
-  program = "CENSUS",
-  data_item = "AG LAND, CROPLAND - ACRES",
-  geographic_level = "COUNTY",
-  domain = "TOTAL",
-  year = "2022",
-  state = NULL,
-  geometry = TRUE,
-  lower48 = TRUE
-) %>% st_drop_geometry()
-
-farms <- getQuickstat(
-  key = ag_census_api_key,
-  program = "CENSUS",
-  data_item = "AG LAND, CROPLAND - NUMBER OF OPERATIONS",
-  geographic_level = "COUNTY",
-  domain = "TOTAL",
-  year = "2022",
-  state = NULL,
-  geometry = TRUE,
-  lower48 = TRUE
-) %>% st_drop_geometry()
-
-acres <- acres %>%
-  select(GEOID, Value) %>%
-  rename(`2022_acres` = Value)
-
-farms <- farms %>%
-  select(GEOID, Value) %>%
-  rename(`2022_farms` = Value)
-
-farm_size <- farms %>%
-  merge(acres, by = 'GEOID') %>%
-  mutate(mean_farm_acres = `2022_acres` / `2022_farms`)
-```
+### 
