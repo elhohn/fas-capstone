@@ -41,6 +41,11 @@ library(corrplot)
 library(NbClust)
 library(broom)
 library(caret)
+library(tidycensus)
+library(tidyUSDA)
+
+census_api_key(Sys.getenv("CENSUS_API_KEY"))
+ag_census_api_key <- Sys.getenv("AG_CENSUS_API_KEY")
 
 options(scipen = 999)
 ```
@@ -389,6 +394,10 @@ data$cluster_id <- membership
 # start with just a few variables as predictors
 predictors <- names(data)[names(data) != 'award_per_capita']
 
+# convert cluster_id to factor
+data$cluster_id <- as.factor(data$cluster_id)
+
+
 # Prepare the model formula
 formula <- as.formula(paste("award_per_capita ~", paste(predictors, collapse = " + ")))
 
@@ -420,4 +429,82 @@ ggplot(testData, aes(x=award_per_capita, y=predictions)) +
 
 # You can further explore the residuals, consider interactions between variables, or try different models.
 
+```
+
+### Pull in additional census data
+
+Use `tidycensus` package to pull in some additional census data to support this analysis. Variable descriptions available [here](https://api.census.gov/data/2020/dec/dhc/variables.html).
+
+```{r get census urban/rural data}
+
+# get county level urban and rural population
+urban_pop <- get_decennial(
+  geography = "county",
+  variables = "H2_002N",
+  year = 2020,
+  sumfile = "dhc") %>%
+  rename(urban_pop = value) %>%
+  select(GEOID, urban_pop)
+
+rural_pop <- get_decennial(
+  geography = "county",
+  variables = "H2_003N",
+  year = 2020,
+  sumfile = "dhc"
+) %>%
+  rename(rural_pop = value) %>%
+  select(GEOID, rural_pop)
+
+urban_rural <- merge(urban_pop, rural_pop, by = 'GEOID') %>%
+  mutate(
+    total_pop = rural_pop + urban_pop,
+    urban_pct = urban_pop / total_pop,
+    rural_pct = rural_pop / total_pop
+    )
+```
+
+### Ag census data?
+
+What about things like total acres of farmland in the county? In nearby counties?
+
+```{r get ag census farmland data}
+
+# run this to see all of your options for data_item argument
+#View(allDataItem)
+
+acres <- getQuickstat(
+  key = ag_census_api_key,
+  program = "CENSUS",
+  data_item = "AG LAND, CROPLAND - ACRES",
+  geographic_level = "COUNTY",
+  domain = "TOTAL",
+  year = "2022",
+  state = NULL,
+  geometry = TRUE,
+  lower48 = TRUE
+) %>% st_drop_geometry()
+
+farms <- getQuickstat(
+  key = ag_census_api_key,
+  program = "CENSUS",
+  data_item = "AG LAND, CROPLAND - NUMBER OF OPERATIONS",
+  geographic_level = "COUNTY",
+  domain = "TOTAL",
+  year = "2022",
+  state = NULL,
+  geometry = TRUE,
+  lower48 = TRUE
+) %>% st_drop_geometry()
+
+acres <- acres %>%
+  select(GEOID, Value) %>%
+  rename(`2022_acres` = Value)
+
+farms <- farms %>%
+  select(GEOID, Value) %>%
+  rename(`2022_farms` = Value)
+
+farm_size <- farms %>%
+  merge(acres, by = 'GEOID') %>%
+  mutate(mean_farm_acres = `2022_acres` / `2022_farms`)
 ```
