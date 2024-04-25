@@ -1,30 +1,69 @@
 ---
-title: "Assessing the relationship between county-level indicators of community wealth and food system investment in the United States"
-author: "Elliot Hohn"
+title: "Analyzing the Role of Community and Individual Factors in LAMP Grant Funding: Identifying Diverse Barriers Across Clustered US Counties"
+subtitle: "FAS Food Systems Impact Fellowship Capstone Project, April 2024"
+author: "Elliot Hohn, Sr. Agricultural Data Scientist Impact Fellow"
 format:
   html:
-    code-fold: true
-    code-summary: "Show the code"
+    theme: simplex
+    fontsize: 1.1em
+    linestretch: 1.7
+    mainfont: avenir
 editor: visual
 ---
 
-## Purpose
-
-This markdown file is sort of a hybrid between an analytic script and a project report – it contains the narrative description of the project, methods, discussion, etc., but also all of the code for loading, cleaning, exploring, and analyzing the data, in addition to the code for creating plots, tables, etc. The reason for this is that I intend to solicit feedback from multiple people, some of whom will be interested in the code, and others who won't be interested in that at all. This format allows me to share the same output (pdf or html) with everyone to avoid separating the contextual information from the analysis itself.
-
-In the end, this might get split into two components – one for the report and separate one for the data analysis. That's all TBD at this point.
-
 ## Introduction
 
-The intersection of community wealth and support of local and regional food system in the form of federal grants represents a critical area of study for understanding the dynamics of local food systems. In recent years, the USDA has implemented various grant programs aimed at enhancing local and regional food markets, among which the Local Agriculture Market Program (LAMP) has been prominent. These grants are designed to support the development and expansion of local food enterprises, improve market opportunities for producers, and ultimately, enhance access to fresh, locally sourced food for consumers. The efficacy of such programs, however, may significantly depend on the socioeconomic fabric of the communities they aim to serve, particularly the wealth and resources available within these communities.
+### Local Agriculture Market Program (LAMP)
 
-Community wealth, encompassing a range of economic indicators from median income and employment rates to more complex measures of economic diversity and resilience, provides a multifaceted view of the local economic environment. This wealth not only influences the immediate capacity of communities to engage with and benefit from USDA grants but may also affect the long-term sustainability and impact of the projects funded by such grants. Thus, exploring the relationship between community wealth metrics and USDA grant spending, especially under programs like LAMP, offers valuable insights into how federal funding can be optimized to support local food systems in diverse economic contexts.
+The USDA's Agricultural Marketing Service (AMS) administers a variety of grant programs aimed at strengthening local and regional food systems. The Local Agriculture Market Program (LAMP) is one such program that supports direct producer-to-consumer marketing, food enterprises, and value-added agricultural products. Established under the 2018 Farm Bill, LAMP fosters community collaboration and public-private partnerships to improve regional food economies, aiding in the development of business strategies and infrastructure for local food systems.
 
-This paper seeks to bridge the gap in the literature by conducting a comprehensive analysis of county-level community wealth metrics and their relationship with LAMP grant spending on local food systems. By employing a mix of descriptive statistics, spatial analysis, and cluster analysis, we aim to identify patterns and disparities in grant allocation and utilization across counties with varying levels of wealth. This analysis is particularly pertinent in the context of increasing recognition of the role local food systems play in promoting food security, economic development, and environmental sustainability.
+![Promotional materials for LAMP. Image: USDA-AMS, 2024](img/LAMP%20Twitter.png){fig-align="center"}
 
-Moreover, by focusing on LAMP grants, this study delves into a specific and impactful area of USDA's efforts to bolster local and regional food markets. These grants, which support a wide range of activities from infrastructure development to marketing and strategic planning for local food initiatives, serve as a critical tool for enhancing the agricultural economy at the local level. Understanding how these grants interact with the underlying community wealth will not only provide a clearer picture of the current landscape of federal support for local food systems but also offer insights into how such support can be tailored to meet the unique needs of different communities.
+### Building community capital through food systems investment
 
-This paper contributes to the burgeoning field of agricultural economics and public policy by highlighting the nuanced ways in which federal grant programs intersect with local economic realities to shape the food landscape. Through a nuanced analysis of LAMP grant spending and community wealth metrics, we offer a comprehensive examination of the factors that contribute to the success and sustainability of local food systems initiatives, thereby informing future policy and program development in this vital sector.
+#### Theory of Change
+
+According to AMS, the main goals of the LAMP program include the following[^1]:
+
+[^1]: <https://www.ams.usda.gov/services/grants/lamp>. Accessed April 20, 2024
+
+-   Simplify the application processes and the reporting processes for the Program
+
+-   Improve income and economic opportunities for producers and food businesses through job creation
+
+-   Strengthen capacity and regional food system development through community collaboration and expansion of mid-tier value chains
+
+#### Targeting / prioritizing funding
+
+In 2021, AMS partnered with Florida A&M University and the University of Maryland Eastern Shore on a project focusing on the following goals[^2]:
+
+[^2]: <https://www.ams.usda.gov/sites/default/files/media/MSDUSDAAMSGrantApplicantTASociallyDisadvantaged.pdf>
+
+1.  Evaluate barriers to AMS grant opportunities for socially disadvantaged communities
+
+2.  Invest in building trust and confidence between these communities and the USDA
+
+3.  Take action to rectify inequalities in program access through targeted outreach, training, and technical assistance.
+
+(something here about the history of discrimination in USDA programs, sowing mistrust among these communities, and potential hesitancy to partner with USDA on programs like LAMP.
+
+### Goal of this project
+
+-   Analyze the data to see if there are relationships between community characteristics and likelihood of receiving LAMP funding
+
+-   Generate actionable insights into improving LAMP grant targeting, identify
+
+### Caveats and such
+
+-   Temporal component -
+
+-   Does not include data on who applied, in addition to who was funded.
+
+### Best practices, current innovation, and policy proposals
+
+(Identify and discuss successful program and policy models, emerging and innovative approaches, or other proposed interventions relevant to the issue area.)
+
+## Objectives of this research
 
 ## Methods
 
@@ -43,184 +82,46 @@ library(broom)
 library(caret)
 library(tidycensus)
 library(tidyUSDA)
+library(FactoMineR)
+library(factoextra)
+library(leaflet)
+library(units)
+library(lmtest)
+library(AER)
 
 census_api_key(Sys.getenv("CENSUS_API_KEY"))
 ag_census_api_key <- Sys.getenv("AG_CENSUS_API_KEY")
 
-options(scipen = 999)
-```
-
-## Community wealth data
-
-### Load and prepare data
-
-The original source of the community wealth data used in this analysis is from Schmitt et al. (2021). However, additional data processing has been done by researchers at Colorado State University (CSU) as part of the CSU Local and Regional Food Systems work, specifically the Indicators of Community Wealth data set included in the USDA-AMS-Data-and-Metrics [repository](https://github.com/CSU-Local-and-Regional-Food-Systems/USDA-AMS-Data-and-Metrics/tree/main) publicly available on GitHub (accessed March 20, 2024). Details on how the original [data](https://github.com/schmi-ny/County-Level-Community-Capital-Stocks/blob/main/CapitalPCs061521.xlsx) from Schmitt et al. (2021) were processed are described in an RMarkdown [file](https://github.com/CSU-Local-and-Regional-Food-Systems/USDA-AMS-Data-and-Metrics/blob/main/Indicators%20of%20Community%20Wealth/community_wealth.Rmd) within CSU's repository. The processed data is what is used in this analysis, loaded directly from the CSU GitHub repository.
-
-After loading the data, a bit of exploratory data analysis is performed to better understand the data, then the values are normalized prior to performing a cluster analysis.
-
-::: callout-note
-The community wealth data has a year value associated with it, so there are often multiple values for a given metric for each county, each associated with a different year. I am not certain how to deal with this right now, so I'm calculating the mean of these values and removing the date.
-:::
-
-```{r community wealth data prep}
-#| output: false
-
-comm_wealth_url <- 'https://raw.githubusercontent.com/CSU-Local-and-Regional-Food-Systems/USDA-AMS-Data-and-Metrics/main/Indicators%20of%20Community%20Wealth/community_wealth.csv'
-comm_wealth <- read.csv(comm_wealth_url) %>%
-  filter(fips > 100) # remove national level rows
-
-# Function to add leading 0 to 4-digit fips values in comm_wealth to facilitate later joins
-add_leading_zero <- function(x) {
-  # Check if the number has 4 digits
-  ifelse(nchar(x) == 4, paste0("0", x), x)
-}
-
-# apply funcion to fips column
-comm_wealth$fips <- sapply(comm_wealth$fips, add_leading_zero)
-
-# make sure all fips codes are 5 digits
-print(sum(nchar(comm_wealth$fips) != 5)) # should equal 0 if all fips codes are 5 digits
-```
-
-#### Summary stats and distributions
-
-Show summary stats for all metrics in community wealth data.
-
-```{r reshape community wealth and summarize}
-#| warning: false
-#| fig-height: 10
-
-# reshape data from tall to wide to give each variable its own column
-comm_wealth_wide <- comm_wealth %>%
-  select(fips, year, variable_name, value) %>%
-  group_by(fips, variable_name) %>%
-  summarise(value = mean(value, na.rm = TRUE)) %>%
-  ungroup() %>%
-  pivot_wider(names_from = variable_name, values_from = value)
-
-print(summary(comm_wealth_wide))
-
-comm_wealth_wide %>%
-  pivot_longer(!fips, names_to = "variable", values_to = "value") %>%
-  ggplot(aes(value)) + 
-  geom_histogram(
-    bins = 15
-  ) + 
-  facet_wrap(
-    ~variable, 
-    scales = 'free',
-    ncol = 5,
-    shrink = FALSE
-    )
-```
-
-#### Normalize values
-
-The values need to be normalized before doing a cluster analysis, so adjust all values to be within range from 0 to 1.
-
-```{r normalize community wealth data}
-#| warning: false
-#| fig-height: 10
- 
-# List of columns to normalize
-cols_to_normalize <- names(comm_wealth_wide)[names(comm_wealth_wide) != 'fips']
-
+# reusable function for normalizing data
 normalize <- function(x){
   (x - min(x, na.rm = TRUE)) / (max(x, na.rm = TRUE) - min(x, na.rm = TRUE))
 }
 
-# normalize the data to range of [0, 1]
-comm_wealth_wide[cols_to_normalize] <- apply(comm_wealth_wide[cols_to_normalize], 2, normalize)
-
-# remake histograms to check ranges
-comm_wealth_wide %>%
-  pivot_longer(!fips, names_to = "variable", values_to = "value") %>%
-  ggplot(aes(value)) + 
-  geom_histogram(
-    bins = 15
-  ) + 
-  facet_wrap(
-    ~variable, 
-    scales = 'free_y',
-    ncol = 5,
-    shrink = FALSE
-    )
+options(scipen = 999)
+my_crs <- 5070
 ```
 
-### Load counties shapefile and join to community stocks data
+### Local Agriculture Market Program (LAMP)
 
-The county-level community wealth data is summarized by FIPS code, so I'm adding county polygons so we can make the data set a spatial sf object for making maps and doing spatial joins.
+According to the USDA-AMS LAMP webpage, the program's main goals are:
 
-```{r county_polygons}
+-   Connect and cultivate regional food economies through public-private partnerships.
 
-counties <- st_read('data/cb_2021_us_county_20m/cb_2021_us_county_20m.shp') %>%
-  filter(!STATE_NAME %in% c('Alaska', 'Hawaii', 'Puerto Rico')) %>%
-  select(GEOID, geometry) %>%
-  st_transform(5070)
+-   Support the development of business plans, feasibility studies, and strategies for value-added agricultural production and local and regional food system infrastructure.
 
-comm_wealth_geo <- merge(counties, comm_wealth_wide, by.x = 'GEOID', by.y = 'fips')
+-   Strengthen capacity and regional food system development through community collaboration and expansion of mid-tier value chains.
 
-ggplot(comm_wealth_geo) +
-  geom_sf(aes(fill = food_secure)) +
-  scale_fill_distiller(
-    name="Food Security", 
-    palette = "BrBG",
-    direction = 1
-    ) +
-  theme_void() +
-  theme(legend.position = "bottom",
-        legend.key.width = unit(2,"cm"),
-        legend.key.height = unit(0.2,"cm")
-  )
-```
+-   Improve income and economic opportunities for producers and food businesses through job creation; and
 
-### Check correlations between variables
+-   Simplify the application processes and the reporting processes for the Program.
 
-My thinking here is that variables that are highly correlated can be combined into a single variable?
+AFAIK, USDA does not have great data on the nuanced characteristics of the counties receiving funding. This analysis might shed some light on whether or not there is some threshold level of social capital that determines if a county gets funding.
 
-```{r correlation matrix}
+### Load LAMP data and create binary "received funding"/"did not receive funding"
 
-# correlation matrix
-correlation <- cor(comm_wealth_wide[, 2:ncol(comm_wealth_wide)], use = "complete.obs")
-corrplot(correlation, method = 'square', tl.cex = 0.4, tl.col = 'black', tl.srt = 45,
-         type = 'upper', order = "hclust")
-```
+The LAMP data includes a row for each grant that has been funded from 2006 to 2023, as well as information on the grant amount, and the main objectives of the grant (e.g., technical assistance, food safety, etc.). For location information, the dataset includes a city and state, but no spatial-type data or coding pertaining to standardized geographies (e.g., counties, census tracts, etc.). Therefore, in order to join this data to county data, I load a dataset of US city names with latitude and longitude values, join this to the LAMP data, then do a spatial join of these points with the geometries of the counties.
 
-### Ideas for additional variables
-
-Rural/Underserved Counties: The Consumer Financial Bureau provides a list of rural or underserved counties based on the Bureau’s interpretive rule (Regulation Z) using data from the Home Mortgage Disclosure Act
-
-Urban vs rural vs peri-urban?
-
-Farmland acreage? farm size?
-
-## LAMP data
-
-### Load and clean/prep data
-
-Data downloaded directly from URL on the LAMP Navigator [webpage](https://www.ams.usda.gov/data/lamp-navigator "LAMP Navigator web pagef").
-
-```{r load lamp data}
-
-lamp_url <- 'https://www.ams.usda.gov/sites/default/files/media/LAMPDatasetandDataDictionary.xlsx'
-lamp <- read.xlsx(lamp_url, sheet = 'LAMP Dataset 2006 to 2023')
-```
-
-### Load city lat/lon dataset
-
-Loaded directly from [GitHub repo](https://github.com/kelvins/US-Cities-Database "city lat/lon data dump").
-
-This is necessary because the LAMP data only has a city and state associated with each grant award, so city location data will be joined to th lamp data to add lat/lon point geometry information to each of the awards.
-
-```{r load city location data}
-
-url <- 'https://raw.githubusercontent.com/kelvins/US-Cities-Database/main/csv/us_cities.csv'
-city_loc <- read.csv(url)
-```
-
-#### Join LAMP grant data with city lat/lon data
-
-Prep data for merge by renaming some columns, converting city names to all lower case in both data sets to ensure clean join.
+This analysis will classify each county in the continental US as either having received LAMP funding (`lamp_funded == 1`), or not having received LAMP funding (`lamp_funded == 0`). To achieve this, I'll load data on all counties in the US, join it to the LAMP data, then mark any county with non-null LAMP grant values as `lamp_funded = 1`
 
 ::: callout-note
 Note: there are some cities in the city_loc dataset that have more than one row, I think because they are bisected by county lines, so I dealt with that short list of issues by grouping them by city and state and selecting the first row in the group.
@@ -228,11 +129,12 @@ Note: there are some cities in the city_loc dataset that have more than one row,
 Also, there are three remaining rows in the LAMP data that don't have cities listed, so there are no coords for them, but I could track those down and fix them manually at some point.
 :::
 
-After joining by city and state, the data set is converted to a spatial sf object so the point data can be spatially joined with the county multipolygon data.
+```{r load lamp and join data}
+#| output: false
 
-```{r join lamp to city lat/lon}
-
-lamp <- lamp %>%
+# Data downloaded directly from URL on the LAMP Navigator webpage
+lamp_url <- 'https://www.ams.usda.gov/sites/default/files/media/LAMPDatasetandDataDictionary.xlsx'
+lamp <- read.xlsx(lamp_url, sheet = 'LAMP Dataset 2006 to 2023') %>%
   rename(
     state = State,
     city = City.2
@@ -240,7 +142,9 @@ lamp <- lamp %>%
   mutate(city = str_squish(str_trim(tolower(city)))) %>%
   filter(!state %in% c('HI', 'AK', 'PR'))
 
-city_loc <- city_loc %>%
+# Load US Cities dataset from github
+url <- 'https://raw.githubusercontent.com/kelvins/US-Cities-Database/main/csv/us_cities.csv'
+city_loc <- read.csv(url) %>%
   select(-c(ID, COUNTY)) %>%
   rename(
     city = CITY,
@@ -263,280 +167,77 @@ lamp_sf <- lamp %>%
   drop_na(LATITUDE, LONGITUDE) %>%
   st_as_sf(coords = c("LONGITUDE", "LATITUDE")) %>%
   st_set_crs(4326) %>%
-  st_transform(st_crs(comm_wealth_geo))
-```
+  st_transform(my_crs)
 
-### Spatial join point data to community wealth spatial data
+# Load counties data (downloaded somewhere on the interwebs...)
+counties <- st_read('data/cb_2021_us_county_20m/cb_2021_us_county_20m.shp') %>%
+  filter(!STATE_NAME %in% c('Alaska', 'Hawaii', 'Puerto Rico')) %>%
+  select(GEOID, geometry) %>%
+  st_transform(my_crs)
 
-Need to assign lamp grant point data to county level
-
-```{r join lamp and community wealth}
-
-# crs for each already aligns
+# spatial join points within counties
 lamp_by_county <- counties %>%
   st_join(lamp_sf, join = st_contains, left = TRUE) %>%
   group_by(GEOID) %>%
   mutate(total_grant = sum(Award.Amount)) %>%
-  drop_na(city)
+  mutate(lamp_funded = as.factor(ifelse(is.na(Award.Amount) | Award.Amount == 0, 0, 1))) %>%
+  select(GEOID, lamp_funded, Organization)
 ```
 
-### Load population data to convert awards to per capita
+```{r funded counties map}
 
-```{r load population data}
+cols <- c('1' = "#014745", '0' = "grey")
 
-pop_url <- 'https://www.ers.usda.gov/webdocs/DataFiles/48747/PopulationEstimates.csv?v=8269.9'
-
-pop <- read.csv(pop_url) %>%
-  filter(Attribute == 'CENSUS_2020_POP',
-         FIPStxt != 0) %>%
-  select(FIPStxt, Value) %>%
-  rename(
-    population_2020 = Value,
-    fips = FIPStxt
-    )
-
-# re-use function from earlier to add leading zeros to FIPS
-pop$fips <- sapply(pop$fips, add_leading_zero)
-
-# clean up lamp data and add total county grant $ column before joining
-lamp_county_summary <- lamp_by_county %>%
-  select(-c("Organization", "Zip", "Project.Congressional.District", "Project.Title",
-            "Project.Abstract/Goal", "Project.Start.Date", "Project.End.Date",
-            "Not.Specified", "Project.Keywords", "StoryMap.Link", "Congressional.District",
-            "Seed.Nof.Success.Highlights", "STATE_NAME", "Entity.Type", "Year", 
-            "Unique.Project.Number", "Grant.Type", "Project.Type", "Project.Count",
-            "Match.Amount.(Final)", "Total.Project.Cost", "total_grant"
-            )) %>%
-  drop_na() %>%
-  summarise(across(Award.Amount:Value.Chain.Coordination, ~ sum(.x, na.rm = TRUE)))
-
-lamp_county_summary <- lamp_county_summary %>%
-  merge(pop, by.x = 'GEOID', by.y = 'fips') %>%
-  mutate(award_per_capita = Award.Amount / population_2020) %>%
-  mutate(centroid = st_centroid(geometry))
-
-# change active geometry column to "centroid"
-lamp_county_summary <- st_set_geometry(lamp_county_summary, "centroid")
-```
-
-Add points to map sized by per capita funding
-
-```{r food security and grant per capita map}
-
-ggplot() +
+ggplot(lamp_by_county) +
   geom_sf(
-    data = comm_wealth_geo,
-    aes(fill = food_secure)) +
-  geom_sf(
-    data = lamp_county_summary,
-    aes(size = award_per_capita),
-    alpha = .5,
-    color = 'purple',
-    fill = 'purple'
-    ) +
-  scale_fill_distiller(
-    name="Food Security", 
-    palette = "BrBG",
-    direction = 1
+    aes(fill = factor(lamp_funded)),
+    color = 'transparent') +
+  scale_fill_manual(
+    values = cols,
+    labels = c('Did not receive\nLAMP funding', 'Received\nLAMP funding')
     ) +
   theme_void() +
-  theme(legend.position = "bottom",
-        legend.key.width = unit(2,"cm"),
-        legend.key.height = unit(0.2,"cm")
-  )
+  theme(
+    legend.position = "bottom",
+    legend.title=element_blank(),
+    plot.title = element_text(hjust = 0.5)
+  ) +
+  ggtitle("Counties that recieved LAMP grants, 2006 to 2023")
 ```
 
-### Ag census data?
+```{r lamp funded leaflet map}
 
-What about things like total acres of farmland in the county? In nearby counties?
+d_map_lamp <- lamp_by_county %>%
+  st_transform(4326)
 
-```{r get ag census farmland data}
+pal <- colorFactor(
+  palette = c('grey', "#014745"),
+  na.color = 'transparent',
+  domain = d_map_lamp$lamp_funded)
 
-# run this to see all of your options for data_item argument
-#View(allDataItem)
+labels <- sprintf(
+  "<strong>%s</strong>",
+  d_map_lamp$Organization
+) %>% lapply(htmltools::HTML)
 
-acres <- getQuickstat(
-  key = ag_census_api_key,
-  program = "CENSUS",
-  data_item = "AG LAND, CROPLAND - ACRES",
-  geographic_level = "COUNTY",
-  domain = "TOTAL",
-  year = "2022",
-  state = NULL,
-  geometry = TRUE,
-  lower48 = TRUE
-) %>% st_drop_geometry()
-
-farms <- getQuickstat(
-  key = ag_census_api_key,
-  program = "CENSUS",
-  data_item = "AG LAND, CROPLAND - NUMBER OF OPERATIONS",
-  geographic_level = "COUNTY",
-  domain = "TOTAL",
-  year = "2022",
-  state = NULL,
-  geometry = TRUE,
-  lower48 = TRUE
-) %>% st_drop_geometry()
-
-acres <- acres %>%
-  select(GEOID, Value) %>%
-  rename(acres = Value)
-
-farms <- farms %>%
-  select(GEOID, Value) %>%
-  rename(farms = Value)
-
-farm_size <- farms %>%
-  merge(acres, by = 'GEOID') %>%
-  mutate(mean_farm_acres = acres / farms)
-```
-
-### Rural vs Urban data from census?
-
-Use `tidycensus` package to pull in some additional census data to support this analysis. Variable descriptions available [here](https://api.census.gov/data/2020/dec/dhc/variables.html).
-
-```{r get census urban/rural data}
-
-# get county level urban and rural population
-urban_pop <- get_decennial(
-  geography = "county",
-  variables = "H2_002N",
-  year = 2020,
-  sumfile = "dhc") %>%
-  rename(urban_pop = value) %>%
-  select(GEOID, urban_pop)
-
-rural_pop <- get_decennial(
-  geography = "county",
-  variables = "H2_003N",
-  year = 2020,
-  sumfile = "dhc"
-) %>%
-  rename(rural_pop = value) %>%
-  select(GEOID, rural_pop)
-
-urban_rural <- merge(urban_pop, rural_pop, by = 'GEOID') %>%
-  mutate(
-    total_pop = rural_pop + urban_pop,
-    urban_pct = urban_pop / total_pop,
-    rural_pct = rural_pop / total_pop
-    )
-  
-```
-
-### Underserved counties?
-
-From Consumer Financial Bureau data
-
-```{r underserved commnities data}
-
-rural_data_url <- 'https://files.consumerfinance.gov/f/documents/cfpb_rural-list_2024.csv'
-rural_data <- read.csv(rural_data_url)
-rural_data$FIPS.Code <- sapply(rural_data$FIPS.Code, add_leading_zero)
-
-
-underserved_data_url <- 'https://files.consumerfinance.gov/f/documents/cfpb_underserved-list_2024.csv'
-underserved_data <- read.csv(underserved_data_url)
-underserved_data$FIPS.Code <- sapply(underserved_data$FIPS.Code, add_leading_zero)
-
-test <- all_data %>%
-  mutate(
-    is_rural = as.factor(ifelse(fips %in% rural_data$FIPS.Code, 1, 0)),
-    is_underserved = as.factor(ifelse(fips %in% underserved_data$FIPS.Code, 1, 0))
-    )
-```
-
-### Combine all data
-
-Join the community wealth data to the LAMP grant data
-
-```{r combine all data}
-
-# for now, just use per capita LAMP funding by county
-lamp_per_cap <- lamp_county_summary %>%
-  st_drop_geometry() %>%
-  select(GEOID, award_per_capita)
-
-# merge and normalize award values
-all_data <- comm_wealth_wide %>%
-  merge(lamp_per_cap, by.x = 'fips', by.y = 'GEOID', all.x = TRUE) %>%
-  st_drop_geometry() %>%
-  mutate(
-    award_per_capita = ifelse(is.na(award_per_capita), 0, award_per_capita),
-    award_per_capita = normalize(award_per_capita),
-    is_rural = ifelse(fips %in% rural_data$FIPS.Code, 1, 0),
-    is_underserved = ifelse(fips %in% underserved_data$FIPS.Code, 1, 0)
+leaflet() %>%
+  addPolygons(
+    data = d_map_lamp,
+    stroke = FALSE, 
+    smoothFactor = 0.2, 
+    fillOpacity = 1,
+    color = ~pal(lamp_funded),
+    # highlightOptions = highlightOptions(
+    #   weight = 5,
+    #   color = "#666",
+    #   dashArray = "",
+    #   fillOpacity = 0.7,
+    #   bringToFront = TRUE),
+    label = labels#,
+    # labelOptions = labelOptions(
+    #   style = list("font-weight" = "normal", padding = "3px 8px"),
+    #   textsize = "15px",
+    #   direction = "auto")
     ) %>%
-  merge(farm_size, by.x = 'fips', by.y = 'GEOID') %>%
-  merge(urban_rural %>% select(GEOID, rural_pct), by.x = 'fips', by.y = 'GEOID')
+  addProviderTiles(providers$CartoDB.Positron)
 ```
-
-## Cluster analysis
-
-First, trying out using the `NbClust` package to determine the optimal number of clusters.
-
-```{r cluster analysis}
-
-data <- na.omit(all_data[, 2:ncol(all_data)])
-
-# note: not sure if award values should be used in clustering or not?
-result <- NbClust(data %>% select(-award_per_capita), diss = NULL, distance = "euclidean",
-                  min.nc = 2, max.nc = 30, method = "ward.D2", index = "kl")
-
-# result$All.index
-# result$Best.nc
-# result$Best.partition
-
-membership <- result$Best.partition
-
-# add cluster membership vector to data set
-data$cluster_id <- membership
-```
-
-### Regression analysis
-
-```{r regression analysis}
-
-# start with just a few variables as predictors
-predictors <- names(data)[names(data) != 'award_per_capita']
-
-# convert cluster_id to factor
-data$cluster_id <- as.factor(data$cluster_id)
-data$is_rural <- as.factor(data$is_rural)
-data$is_underserved <- as.factor(data$is_underserved)
-
-# Prepare the model formula
-formula <- as.formula(paste("award_per_capita ~", paste(predictors, collapse = " + ")))
-
-# Split the data into training and testing sets
-set.seed(123)  # for reproducibility
-index <- createDataPartition(data$award_per_capita, p=0.8, list=FALSE)
-trainData <- data[index, ]
-testData <- data[-index, ]
-
-# Fit the linear regression model
-model <- lm(formula, data=trainData)
-
-# Summarize the model
-summary(model)
-
-# Predict on the testing set
-predictions <- predict(model, newdata=testData)
-
-# Calculate performance metrics, e.g., RMSE
-testData$predictions <- predictions
-RMSE <- sqrt(mean((testData$award_per_capita - testData$predictions)^2))
-print(paste("RMSE: ", RMSE))
-
-# visualize the actual vs. predicted values
-ggplot(testData, aes(x=award_per_capita, y=predictions)) +
-  geom_point() +
-  geom_abline(intercept=0, slope=1, linetype="dashed", color="red") +
-  labs(x="Actual", y="Predicted", title="Actual vs. Predicted Award Per Capita")
-
-# You can further explore the residuals, consider interactions between variables, or try different models.
-
-```
-
-### 
