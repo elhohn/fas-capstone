@@ -240,8 +240,8 @@ leaflet(d_map_lamp,
     stroke = FALSE, 
     fillOpacity = 0.5
  ) %>%
-  addProviderTiles(providers$Stadia.AlidadeSmooth) %>%
-  #addTiles() %>%
+  #addProviderTiles(providers$Stadia.AlidadeSmooth) %>%
+  addTiles() %>%
   setMaxBounds(
     lng1 = -124.8,
     lat1 = 49.5,
