@@ -75,7 +75,6 @@ In 2021, AMS partnered with Florida A&M University and the University of Marylan
 library(tidyverse)
 library(sf)
 library(openxlsx)
-library(stringr)
 library(corrplot)
 library(NbClust)
 library(broom)
@@ -167,12 +166,13 @@ lamp_sf <- lamp %>%
   drop_na(LATITUDE, LONGITUDE) %>%
   st_as_sf(coords = c("LONGITUDE", "LATITUDE")) %>%
   st_set_crs(4326) %>%
-  st_transform(my_crs)
+  st_transform(crs = my_crs)
 
 # Load counties data (downloaded somewhere on the interwebs...)
 counties <- st_read('data/cb_2021_us_county_20m/cb_2021_us_county_20m.shp') %>%
   filter(!STATE_NAME %in% c('Alaska', 'Hawaii', 'Puerto Rico')) %>%
   select(GEOID, geometry) %>%
+  st_set_crs(4326) %>%
   st_transform(my_crs)
 
 # spatial join points within counties
