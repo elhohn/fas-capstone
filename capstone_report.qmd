@@ -2,6 +2,8 @@
 title: "Analyzing the Role of Community and Individual Factors in LAMP Grant Funding: Identifying Diverse Barriers Across Clustered US Counties"
 subtitle: "FAS Food Systems Impact Fellowship Capstone Project, April 2024"
 author: "Elliot Hohn, Sr. Agricultural Data Scientist Impact Fellow"
+execute:
+  echo: false
 format:
   html:
     theme: simplex
@@ -87,6 +89,7 @@ library(leaflet)
 library(units)
 library(lmtest)
 library(AER)
+library(ggthemes)
 
 census_api_key(Sys.getenv("CENSUS_API_KEY"))
 ag_census_api_key <- Sys.getenv("AG_CENSUS_API_KEY")
@@ -116,17 +119,7 @@ According to the USDA-AMS LAMP webpage, the program's main goals are:
 
 AFAIK, USDA does not have great data on the nuanced characteristics of the counties receiving funding. This analysis might shed some light on whether or not there is some threshold level of social capital that determines if a county gets funding.
 
-### Load LAMP data and create binary "received funding"/"did not receive funding"
-
-The LAMP data includes a row for each grant that has been funded from 2006 to 2023, as well as information on the grant amount, and the main objectives of the grant (e.g., technical assistance, food safety, etc.). For location information, the dataset includes a city and state, but no spatial-type data or coding pertaining to standardized geographies (e.g., counties, census tracts, etc.). Therefore, in order to join this data to county data, I load a dataset of US city names with latitude and longitude values, join this to the LAMP data, then do a spatial join of these points with the geometries of the counties.
-
-This analysis will classify each county in the continental US as either having received LAMP funding (`lamp_funded == 1`), or not having received LAMP funding (`lamp_funded == 0`). To achieve this, I'll load data on all counties in the US, join it to the LAMP data, then mark any county with non-null LAMP grant values as `lamp_funded = 1`
-
-::: callout-note
-Note: there are some cities in the city_loc dataset that have more than one row, I think because they are bisected by county lines, so I dealt with that short list of issues by grouping them by city and state and selecting the first row in the group.
-
-Also, there are three remaining rows in the LAMP data that don't have cities listed, so there are no coords for them, but I could track those down and fix them manually at some point.
-:::
+### LAMP data exploration
 
 ```{r load lamp and join data}
 #| output: false
@@ -154,10 +147,6 @@ city_loc <- read.csv(url) %>%
   filter(row_number()==1) %>% 
   ungroup()
 
-# check how many cities in LAMP data are in city_loc data
-#print(length(unique(lamp$city)))
-#print(length(unique(lamp$city) %in% city_loc$city))
-
 # do the join
 lamp <- merge(lamp, city_loc, by = c('city', 'state'), all.x = TRUE)
 
@@ -184,60 +173,31 @@ lamp_by_county <- counties %>%
   select(GEOID, lamp_funded, Organization)
 ```
 
-```{r funded counties map}
-
-cols <- c('1' = "#014745", '0' = "grey")
-
-ggplot(lamp_by_county) +
-  geom_sf(
-    aes(fill = factor(lamp_funded)),
-    color = 'transparent') +
-  scale_fill_manual(
-    values = cols,
-    labels = c('Did not receive\nLAMP funding', 'Received\nLAMP funding')
-    ) +
-  theme_void() +
-  theme(
-    legend.position = "bottom",
-    legend.title=element_blank(),
-    plot.title = element_text(hjust = 0.5)
-  ) +
-  ggtitle("Counties that recieved LAMP grants, 2006 to 2023")
-```
-
 ```{r lamp funded leaflet map}
 
-d_map_lamp <- lamp_by_county %>%
+d_map_lamp <- lamp_sf %>%
   st_transform(4326)
 
+# # collapse columns of grant category (e.g., TA, infrastructure, etc.) into single column
+# d_map_lamp <- d_map_lamp %>%
+#   pivot_longer(
+#     cols = 'Aggregation':'Not.Specified', 
+#     names_to = "category",
+#     values_to = "value"
+# ) %>%
+#   mutate(category = as.factor(category))
+
+d_map_lamp$point_size <- scales::rescale(d_map_lamp$Award.Amount, c(1, 15))
+
 pal <- colorFactor(
-  palette = c('grey', "#014745"),
-  na.color = 'transparent',
-  domain = d_map_lamp$lamp_funded)
+  palette = 'magma', domain = d_map_lamp$Grant.Type)
 
-labels <- sprintf(
-  "<strong>%s</strong>",
-  d_map_lamp$Organization
-) %>% lapply(htmltools::HTML)
-
-leaflet() %>%
-  addPolygons(
-    data = d_map_lamp,
+leaflet(d_map_lamp) %>%
+  addCircleMarkers(
+    radius = ~ point_size,
+    color = ~pal(Grant.Type),
     stroke = FALSE, 
-    smoothFactor = 0.2, 
-    fillOpacity = 1,
-    color = ~pal(lamp_funded),
-    # highlightOptions = highlightOptions(
-    #   weight = 5,
-    #   color = "#666",
-    #   dashArray = "",
-    #   fillOpacity = 0.7,
-    #   bringToFront = TRUE),
-    label = labels#,
-    # labelOptions = labelOptions(
-    #   style = list("font-weight" = "normal", padding = "3px 8px"),
-    #   textsize = "15px",
-    #   direction = "auto")
-    ) %>%
+    fillOpacity = 0.5
+ ) %>%
   addProviderTiles(providers$CartoDB.Positron)
 ```
