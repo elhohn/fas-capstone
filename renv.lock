@@ -1215,14 +1215,9 @@
     },
     "ggthemes": {
       "Package": "ggthemes",
-      "Version": "5.1.0.9000",
-      "Source": "GitHub",
-      "RemoteType": "github",
-      "RemoteHost": "api.github.com",
-      "RemoteRepo": "ggthemes",
-      "RemoteUsername": "jrnold",
-      "RemoteRef": "HEAD",
-      "RemoteSha": "ca38c6250b17acc138b5cd5ccc45ab9e07234f3a",
+      "Version": "5.1.0",
+      "Source": "Repository",
+      "Repository": "CRAN",
       "Requirements": [
         "R",
         "ggplot2",
@@ -1235,7 +1230,7 @@
         "stringr",
         "tibble"
       ],
-      "Hash": "47b0bd08e7b4aab4c25b63744f46306d"
+      "Hash": "16a4974681fc751a09a1250431361896"
     },
     "globals": {
       "Package": "globals",
@@ -1650,20 +1645,14 @@
     },
     "leaflet.providers": {
       "Package": "leaflet.providers",
-      "Version": "2.0.0.9000",
-      "Source": "GitHub",
-      "RemoteType": "github",
-      "RemoteHost": "api.github.com",
-      "RemoteRepo": "leaflet.providers",
-      "RemoteUsername": "rstudio",
-      "RemotePkgRef": "rstudio/leaflet.providers",
-      "RemoteRef": "HEAD",
-      "RemoteSha": "526ee9a426f60ec709ece0b28d360f45f925942e",
+      "Version": "2.0.0",
+      "Source": "Repository",
+      "Repository": "CRAN",
       "Requirements": [
         "R",
         "htmltools"
       ],
-      "Hash": "92da3fcd7e9ee6a7ca2607595f78e7b5"
+      "Hash": "c0b81ad9d5d932772f7a457ac398cf36"
     },
     "leaps": {
       "Package": "leaps",
@@ -2746,7 +2735,7 @@
     },
     "survival": {
       "Package": "survival",
-      "Version": "3.6-4",
+      "Version": "3.5-8",
       "Source": "Repository",
       "Repository": "CRAN",
       "Requirements": [
@@ -2758,7 +2747,7 @@
         "stats",
         "utils"
       ],
-      "Hash": "e6e3071f471513e4b85f98ca041303c7"
+      "Hash": "184d7799bca4ba8c3be72ea396f4b9a3"
     },
     "sys": {
       "Package": "sys",
