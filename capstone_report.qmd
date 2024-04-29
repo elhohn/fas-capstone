@@ -93,6 +93,7 @@ library(lmtest)
 library(AER)
 library(ggthemes)
 library(shiny)
+library(markdown)
 
 census_api_key(Sys.getenv("CENSUS_API_KEY"))
 ag_census_api_key <- Sys.getenv("AG_CENSUS_API_KEY")
