@@ -283,149 +283,157 @@ pal_generator <- function(d, pal = 'RdPu') {
   return(colorQuantile(palette = pal, domain = d$overall, n = 9))
 }
 
-# pal_generator <- function(d, pal = 'YlOrRd') {
-#   return(colorBin(palette = pal, domain = d$overall, bins = bins))
-# }
-
 leaflet() %>%
-  #addTiles() %>%
+  addTiles() %>%
   addPolygons(
     data = natural,
     weight = 0.5,
     color = 'white',
     fillOpacity = 1,
     fillColor = pal_generator(natural)(natural$overall),
-    group = "nature") %>%
+    group = "Natural_Resources",
+    ) %>%
   addPolygons(
     data = agriculture,
     weight = 0.5,
     color = 'white',
     fillOpacity = 1,
     fillColor = pal_generator(agriculture)(agriculture$overall),
-    group = "ag") %>%
-  # addPolygons(
-  #   data = financial,
-  #   weight = 0.5,
-  #   color = 'white',
-  #   fillOpacity = 1,
-  #   fillColor = pal_generator(financial)(financial$overall),
-  #   group = "Financial Resources") %>%
-  # addPolygons(
-  #   data = community_resources,
-  #   weight = 0.5,
-  #   color = 'white',
-  #   fillOpacity = 1,
-  #   fillColor = pal_generator(community_resources)(community_resources$overall),
-  #   group = "Community Resources") %>%
-  # addPolygons(
-  #   data = infrastructure,
-  #   weight = 0.5,
-  #   color = 'white',
-  #   fillOpacity = 1,
-  #   fillColor = pal_generator(infrastructure)(infrastructure$overall),
-  #   group = "Infrastructure") %>%
-  # addPolygons(
-  #   data = food_insecurity, 
-  #   weight = 0.5,
-  #   color = 'white',    
-  #   fillOpacity = 1,
-  #   fillColor = pal_generator(food_insecurity)(food_insecurity$overall),
-  #   group = "Food Insecurity") %>%
-  # addPolygons(
-  #   data = population, 
-  #   weight = 0.5,
-  #   color = 'white',    
-  #   fillOpacity = 1,
-  #   fillColor = pal_generator(population)(population$overall),
-  #   group = "Population") %>%
-  # addPolygons(
-  #   data = food_processors, 
-  #   weight = 0.5,
-  #   color = 'white',    
-  #   fillOpacity = 1,
-  #   fillColor = pal_generator(food_processors)(food_processors$overall),
-  #   group = "Food Processors") %>%
+    group = "Agricultural_Resources") %>%
+  addPolygons(
+    data = financial,
+    weight = 0.5,
+    color = 'white',
+    fillOpacity = 1,
+    fillColor = pal_generator(financial)(financial$overall),
+    group = "Financial_Resources") %>%
+  addPolygons(
+    data = community_resources,
+    weight = 0.5,
+    color = 'white',
+    fillOpacity = 1,
+    fillColor = pal_generator(community_resources)(community_resources$overall),
+    group = "Community_Resources") %>%
+  addPolygons(
+    data = infrastructure,
+    weight = 0.5,
+    color = 'white',
+    fillOpacity = 1,
+    fillColor = pal_generator(infrastructure)(infrastructure$overall),
+    group = "Infrastructure") %>%
+  addPolygons(
+    data = food_insecurity,
+    weight = 0.5,
+    color = 'white',
+    fillOpacity = 1,
+    fillColor = pal_generator(food_insecurity)(food_insecurity$overall),
+    group = "Food_Insecurity") %>%
+  addPolygons(
+    data = population,
+    weight = 0.5,
+    color = 'white',
+    fillOpacity = 1,
+    fillColor = pal_generator(population)(population$overall),
+    group = "Population") %>%
+  addPolygons(
+    data = food_processors,
+    weight = 0.5,
+    color = 'white',
+    fillOpacity = 1,
+    fillColor = pal_generator(food_processors)(food_processors$overall),
+    group = "Food_Processors") %>%
   addLegend(
-    "bottomleft", 
+    "bottomright", 
     pal = pal_generator(natural), 
     opacity = 1,
     values = natural$overall,
-    title = 'Natural Resources Index Score',
-    group = "nature") %>%
+    title = HTML('Natural Resources<br>Index Score'),
+    group = "Natural_Resources",
+    className = "info legend Natural_Resources"
+  ) %>%
   addLegend(
-    "bottomleft", 
+    "bottomright", 
     pal = pal_generator(agriculture), 
     opacity = 1,
     values = agriculture$overall,
-    title = 'Agricultural Resources Index Score',
-    group = "ag") %>%
-  # addLegend(
-  #   "bottomright", 
-  #   pal = pal_generator(financial), 
-  #   opacity = 1,
-  #   values = financial$overall,
-  #   title = 'Financial Resources\nIndex Score',
-  #   group = "Financial Resources") %>%
-  # addLegend(
-  #   "bottomright", 
-  #   pal = pal_generator(community_resources), 
-  #   opacity = 1,
-  #   values = community_resources$overall,
-  #   title = 'Commnunity Resources\nIndex Score',
-  #   group = "Community Resources") %>%
-  # addLegend(
-  #   "bottomright", 
-  #   pal = pal_generator(food_processors), 
-  #   opacity = 1,
-  #   values = food_processors$overall,
-  #   title = 'Food Processors Index Score',
-  #   group = "Food Processors") %>%
-  # addLegend(
-  #   "bottomright", 
-  #   pal = pal_generator(infrastructure), 
-  #   opacity = 1,
-  #   values = food_processors$overall,
-  #   title = 'Infrastructure Index Score',
-  #   group = "Infrastructure") %>%
-  # addLegend(
-  #   "bottomright", 
-  #   pal = pal_generator(food_insecurity), 
-  #   opacity = 1,
-  #   values = food_insecurity$overall,
-  #   title = 'Food Insecurity Index Score',
-  #   group = "Food Insecurity") %>%
-  # addLegend(
-  #   "bottomright", 
-  #   pal = pal_generator(population), 
-  #   opacity = 1,
-  #   values = population$overall,
-  #   title = 'Population Index Score',
-  #   group = "Population") %>%
+    title = HTML('Agricultural Resources<br>Index Score'),
+    group = "Agricultural_Resources",
+    className = 'info legend Agricultural_Resources') %>%
+  addLegend(
+    "bottomright",
+    pal = pal_generator(financial),
+    opacity = 1,
+    values = financial$overall,
+    title = HTML('Financial Resources<br>Index Score'),
+    group = "Financial_Resources",
+    className = "info legend Financial_Resources"
+    ) %>%
+  addLegend(
+    "bottomright",
+    pal = pal_generator(community_resources),
+    opacity = 1,
+    values = community_resources$overall,
+    title = HTML('Commnunity Resources<br>Index Score'),
+    group = "Community_Resources",
+    className = 'info legend Community_Resources') %>%
+  addLegend(
+    "bottomright",
+    pal = pal_generator(food_processors),
+    opacity = 1,
+    values = food_processors$overall,
+    title = HTML('Food Processors<br>Index Score'),
+    group = "Food_Processors",
+    className = "info legend Food_Processors") %>%
+  addLegend(
+    "bottomright",
+    pal = pal_generator(infrastructure),
+    opacity = 1,
+    values = infrastructure$overall,
+    title = HTML('Infrastructure<br>Index Score'),
+    group = "Infrastructure",
+    className = "info legend Infrastructure") %>%
+  addLegend(
+    "bottomright",
+    pal = pal_generator(food_insecurity),
+    opacity = 1,
+    values = food_insecurity$overall,
+    title = HTML('Food Insecurity<br>Index Score'),
+    group = "Food_Insecurity",
+    className = "info legend Food_Insecurity") %>%
+  addLegend(
+    "bottomright",
+    pal = pal_generator(population),
+    opacity = 1,
+    values = population$overall,
+    title = HTML('Population<br>Index Score'),
+    group = "Population",
+    className = "info legend Population") %>%
   addLayersControl(
     baseGroups = c(
-      # "Infrastructure", 
-      # "Food Insecurity", 
-      # "Population", 
-      # "Food Processors",
-      # "Community Resources", 
-      # "Financial Resources", 
-      "nature",
-      "ag"
-      ),
-      options = layersControlOptions(collapsed = TRUE)
+      "Infrastructure", 
+      "Food_Insecurity", 
+      "Population", 
+      "Food_Processors",
+      "Community_Resources", 
+      "Financial_Resources",
+      "Natural_Resources",
+      "Agricultural_Resources"
+    ),
+    options = layersControlOptions(collapsed = TRUE)
   ) %>%
-  htmlwidgets::onRender("
-      function(el, x) {
-         var updateLegend = function () {
-            var selectedGroup = document.querySelectorAll('input:checked')[0].nextSibling.innerText.substr(1);
-
-            document.querySelectorAll('.legend').forEach(a => a.hidden=true);
-            document.querySelectorAll('.legend').forEach(l => {
-               if (l.classList.contains(selectedGroup)) l.hidden=false;
-            });
-         };
-         updateLegend();
-         this.on('baselayerchange', el => updateLegend());
-      }"
-   )
+    htmlwidgets::onRender(
+      "
+        function(el, x) {
+           var updateLegend = function () {
+              var selectedGroup = document.querySelectorAll('input:checked')[0].nextSibling.innerText.substr(1);
+  
+              document.querySelectorAll('.legend').forEach(a => a.hidden=true);
+              document.querySelectorAll('.legend').forEach(l => {
+                 if (l.classList.contains(selectedGroup)) l.hidden=false;
+              });
+           };
+           updateLegend();
+           this.on('baselayerchange', el => updateLegend());
+        }"
+    )
 ```
