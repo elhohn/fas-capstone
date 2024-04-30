@@ -4,7 +4,7 @@ subtitle: "FAS Food Systems Impact Fellowship Capstone Project, April 2024"
 author: "Elliot Hohn, Sr. Agricultural Data Scientist Impact Fellow"
 execute:
   echo: false
-  warnings: false
+  warning: false
 format:
   html:
     theme: simplex
@@ -12,6 +12,7 @@ format:
     linestretch: 1.7
     mainfont: avenir
     #page-layout: custom
+fig-align: center
 editor: visual
 #server: shiny
 ---
@@ -292,8 +293,13 @@ pal_generator <- function(d, pal = 'RdPu') {
   return(colorQuantile(palette = pal, domain = d$overall, n = 9))
 }
 
-leaflet() %>%
+leaflet(options = leafletOptions(minZoom = 4)) %>%
   addTiles() %>%
+  setMaxBounds(
+    lng1 = -124.8,
+    lat1 = 49.5,
+    lng2 = -66.8,
+    lat2 = 24.4) %>%
   addPolygons(
     data = natural,
     weight = 0.5,
@@ -505,6 +511,10 @@ d <- d %>%
 ```
 
 ```{r wealth vs award scatter plots}
+#| column: screen
+##| out-width: 80%
+#| out-height: 5in
+#| fig-align: center
 
 overall_columns <- grep("_overall$", names(d), value = TRUE)
 new_names <- c(
@@ -533,7 +543,7 @@ p <- ggplot(d2 %>% select(-c(GEOID, lamp_funded)) %>% ungroup(),
                 text = paste("County:", County)),
                 alpha = 0.7, size = 2) +
      geom_smooth(method = 'lm', se = FALSE, color = 'grey25', linewidth = .4) +
-     scale_color_colorblind() +
+     ggthemes::scale_color_solarized() +
      facet_wrap(~ variable, ncol = 2) +
      labs(title = 'Community Wealth Indices vs LAMP $ Per Capita, 2006-2022',
           x = 'Total Award $ Per Capita, 2006-2022',
