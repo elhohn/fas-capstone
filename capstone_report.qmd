@@ -103,7 +103,11 @@ normalize <- function(x){
   round((x - min(x, na.rm = TRUE)) / (max(x, na.rm = TRUE) - min(x, na.rm = TRUE)), 4)
 }
 
-options(scipen = 999)
+options(
+  scipen = 999,
+  dplyr.summarise.inform=FALSE
+  )
+
 my_crs <- 5070
 ```
 
@@ -239,6 +243,7 @@ comm_wealth$fips <- sapply(comm_wealth$fips, add_leading_zero)
 ```
 
 ```{r wealth data subset}
+#| warnings: false
 
 subsetter <- function(topic) {
   d <- comm_wealth %>%
@@ -274,7 +279,8 @@ natural <- subsetter("Natural")
 agriculture <- subsetter("Agriculture")
 ```
 
-```{r join lamp and community wealth}
+```{r wealth map}
+#| warnings: false
 
 #bins <- seq(from = 0, to = 1, by = 0.2)
 #pal <- colorBin("YlOrRd", domain = 0:1, bins = bins)
