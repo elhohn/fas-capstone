@@ -4,6 +4,7 @@ subtitle: "FAS Food Systems Impact Fellowship Capstone Project, April 2024"
 author: "Elliot Hohn, Sr. Agricultural Data Scientist Impact Fellow"
 execute:
   echo: false
+  warnings: false
 format:
   html:
     theme: simplex
@@ -94,6 +95,8 @@ library(AER)
 library(ggthemes)
 library(shiny)
 library(rmarkdown)
+library(plotly)
+library(reshape2)
 
 census_api_key(Sys.getenv("CENSUS_API_KEY"))
 ag_census_api_key <- Sys.getenv("AG_CENSUS_API_KEY")
@@ -168,7 +171,7 @@ lamp_sf <- lamp %>%
 # Load counties data (downloaded somewhere on the interwebs...)
 counties <- st_read('data/cb_2021_us_county_20m/cb_2021_us_county_20m.shp') %>%
   filter(!STATE_NAME %in% c('Alaska', 'Hawaii', 'Puerto Rico')) %>%
-  select(GEOID, geometry) %>%
+  select(GEOID, NAMELSAD, geometry) %>%
   st_set_crs(4326) %>%
   st_transform(my_crs)
 
@@ -178,7 +181,7 @@ lamp_by_county <- counties %>%
   group_by(GEOID) %>%
   mutate(total_grant = sum(Award.Amount)) %>%
   mutate(lamp_funded = as.factor(ifelse(is.na(Award.Amount) | Award.Amount == 0, 0, 1))) %>%
-  select(GEOID, lamp_funded, Organization)
+  select(GEOID, NAMELSAD, lamp_funded, Award.Amount)
 ```
 
 ```{r lamp funded leaflet map}
@@ -442,4 +445,104 @@ leaflet() %>%
            this.on('baselayerchange', el => updateLegend());
         }"
     )
+```
+
+### Plot of wealth indices vs Award Amounts
+
+```{r prepping wealth vs award data}
+
+# join lamp_by_county and individual `overall` scores
+lamp_by_county2 <- lamp_by_county %>%
+  st_drop_geometry() %>%
+  rename(County = NAMELSAD)
+
+clean_up <- function(d) {
+  return (d %>% 
+          st_drop_geometry() %>% 
+          select(GEOID, overall))
+}
+
+d <- lamp_by_county2 %>%
+  merge(clean_up(agriculture), by = 'GEOID') %>%
+  rename(agriculture_overall = overall) %>%
+  merge(clean_up(community_resources), by = 'GEOID') %>%
+  rename(community_resources_overall = overall) %>%
+  merge(clean_up(financial), by = 'GEOID') %>%
+  rename(financial_overall = overall) %>%
+  merge(clean_up(food_insecurity), by = 'GEOID') %>%
+  rename(food_insecurity_overall = overall) %>%
+  merge(clean_up(food_processors), by = 'GEOID') %>%
+  rename(food_processors_overall = overall) %>%
+  merge(clean_up(infrastructure), by = 'GEOID') %>%
+  rename(infrastructure_overall = overall) %>%
+  merge(clean_up(natural), by = 'GEOID') %>%
+  rename(natural_overall = overall) %>%
+  merge(clean_up(population), by = 'GEOID') %>%
+  rename(population_overall = overall) %>%
+  drop_na()
+
+pop_url <- 'https://www.ers.usda.gov/webdocs/DataFiles/48747/PopulationEstimates.csv?v=8269.9'
+
+pop <- read.csv(pop_url) %>%
+  filter(Attribute == 'CENSUS_2020_POP',
+         FIPStxt != 0) %>%
+  select(FIPStxt, Value) %>%
+  rename(
+    population_2020 = Value,
+    fips = FIPStxt
+    )
+
+# re-use function from earlier to add leading zeros to FIPS
+pop$fips <- sapply(pop$fips, add_leading_zero)
+
+# clean up lamp data and add total county grant $ column before joining
+d <- d %>%
+  merge(pop, by.x = 'GEOID', by.y = 'fips') %>%
+  mutate(award_per_capita = Award.Amount / population_2020) %>%
+  select(-population_2020)
+
+#write_csv(d, 'd.csv')
+```
+
+```{r wealth vs award scatter plots}
+
+overall_columns <- grep("_overall$", names(d), value = TRUE)
+new_names <- c(
+  'Agricultural Resources',
+  'Community Resources',
+  'Financial Resources',
+  'Food Insecurity',
+  'Food Processors',
+  'Infrastructure',
+  'Natural Capital',
+  'Population'
+)
+d2 <- d %>% 
+  rename_at(vars(overall_columns), ~ new_names) %>%
+  filter(!County %in% c('Menominee County', 'Kidder County'))
+
+d2 <- reshape2::melt(
+  d2, id.vars = c('GEOID', 'County', 'lamp_funded', 'award_per_capita'), 
+  measure.vars = new_names)
+
+# Create a scatter plot with facets
+p <- ggplot(d2 %>% select(-c(GEOID, lamp_funded)) %>% ungroup(), 
+            aes(x = award_per_capita, 
+                y = value)) +
+     geom_point(aes(color = variable, 
+                text = paste("County:", County)),
+                alpha = 0.7, size = 2) +
+     geom_smooth(method = 'lm', se = FALSE, color = 'grey25', linewidth = .4) +
+     scale_color_colorblind() +
+     facet_wrap(~ variable, ncol = 2) +
+     labs(title = 'Community Wealth Indices vs LAMP $ Per Capita, 2006-2022',
+          x = 'Total Award $ Per Capita, 2006-2022',
+          y = 'Index Value',
+          caption = "Note: two counties, Menominee County (Michigan) and Kidder County (North Dakota), were removed from the dataset used for this plot because they were identified as outliers.") +
+     ylim(0, 1) +
+     theme_minimal() +
+     theme(legend.position = "none")
+
+# Convert ggplot object to plotly for interactivity
+ggplotly(p, tooltip = "text") %>% config(displayModeBar = FALSE)
 ```
