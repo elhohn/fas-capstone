@@ -118,6 +118,14 @@ options(
   )
 
 my_crs <- 5070
+
+my_map <- leaflet(options = leafletOptions(minZoom = 4)) %>%
+  addTiles() %>%
+  setMaxBounds(
+    lng1 = -124.8,
+    lat1 = 49.5,
+    lng2 = -66.8,
+    lat2 = 24.4)
 ```
 
 ### Local Agriculture Market Program (LAMP)
@@ -210,22 +218,25 @@ d_map_lamp$point_size <- scales::rescale(d_map_lamp$Award.Amount, c(1, 15))
 pal <- colorFactor(
   palette = 'magma', domain = d_map_lamp$Grant.Type)
 
-leaflet(d_map_lamp,
-        options = leafletOptions(minZoom = 4)) %>%
+my_map %>%
+# leaflet(d_map_lamp,
+#         options = leafletOptions(minZoom = 4)) %>%
   addCircleMarkers(
+    data = d_map_lamp,
     radius = ~ point_size,
     color = ~pal(Grant.Type),
     stroke = FALSE, 
     fillOpacity = 0.5
  ) %>%
   #addProviderTiles(providers$Stadia.AlidadeSmooth) %>%
-  addTiles() %>%
-  setMaxBounds(
-    lng1 = -124.8,
-    lat1 = 49.5,
-    lng2 = -66.8,
-    lat2 = 24.4) %>%
-  addLegend("bottomright", pal = pal, values = ~Grant.Type,
+  # addTiles() %>%
+  # setMaxBounds(
+  #   lng1 = -124.8,
+  #   lat1 = 49.5,
+  #   lng2 = -66.8,
+  #   lat2 = 24.4) %>%
+  addLegend(
+    data = d_map_lamp, "bottomright", pal = pal, values = ~Grant.Type,
     title = "Grant Type",
     #labFormat = labelFormat(prefix = "$"),
     opacity = 1
@@ -300,13 +311,14 @@ pal_generator <- function(d, pal = 'RdPu') {
   return(colorQuantile(palette = pal, domain = d$overall, n = 9))
 }
 
-leaflet(options = leafletOptions(minZoom = 4)) %>%
-  addTiles() %>%
-  setMaxBounds(
-    lng1 = -124.8,
-    lat1 = 49.5,
-    lng2 = -66.8,
-    lat2 = 24.4) %>%
+my_map %>%
+# leaflet(options = leafletOptions(minZoom = 4)) %>%
+#   addTiles() %>%
+#   setMaxBounds(
+#     lng1 = -124.8,
+#     lat1 = 49.5,
+#     lng2 = -66.8,
+#     lat2 = 24.4) %>%
   addPolygons(
     data = natural,
     weight = 0.5,
@@ -587,9 +599,11 @@ labels <- sprintf(
   ruc$NAMELSAD, ruc$Description
 ) %>% lapply(htmltools::HTML)
 
-leaflet(ruc) %>%
-  addTiles() %>%
+my_map %>%
+# leaflet(ruc) %>%
+#   addTiles() %>%
   addPolygons(
+    data = ruc,
     fillColor = ~ruc_pal(RUCC_2023),
     color = 'white',
     opacity = 1,
@@ -629,8 +643,9 @@ bivar_pal <- function(n){
   return(c('#d3d3d3', '#9e3547', '#4279b0', '#311e3b'))
 }
 
-leaflet() %>%
-  addTiles() %>%
+my_map %>%
+# leaflet() %>%
+#   addTiles() %>%
   bivariatechoropleths::addBivariateChoropleth(
      map_data = test,
      var1_name = is_rural,
@@ -675,9 +690,11 @@ labels <- sprintf(
   pov_sf$NAMELSAD, pov_sf$poverty_rate
 ) %>% lapply(htmltools::HTML)
 
-leaflet(pov_sf) %>%
-  addTiles() %>%
+my_map %>%
+# leaflet(pov_sf) %>%
+#   addTiles() %>%
   addPolygons(
+    data = pov_sf,
     fillColor = ~pov_pal(poverty_rate),
     color = 'white',
     opacity = 1,
@@ -689,7 +706,9 @@ leaflet(pov_sf) %>%
       textsize = "15px",
       direction = "auto")
   ) %>%
-  addLegend("bottomright", pal = pov_pal, values = ~poverty_rate,
+  addLegend(
+    data = pov_sf,
+    "bottomright", pal = pov_pal, values = ~poverty_rate,
     title = "Poverty Rate",
     #labFormat = labelFormat(prefix = "$"),
     opacity = 1
@@ -738,9 +757,11 @@ labels <- sprintf(
   ag_proportion$GEOID, ag_proportion$ag_proportion) %>% 
   lapply(htmltools::HTML)
 
-leaflet(ag_proportion) %>%
-  addTiles() %>%
+my_map %>%
+# leaflet(ag_proportion) %>%
+#   addTiles() %>%
   addPolygons(
+    data = ag_proportion,
     fillColor = ~ag_pal(ag_proportion),
     color = 'white',
     opacity = 1,
@@ -752,14 +773,14 @@ leaflet(ag_proportion) %>%
       textsize = "15px",
       direction = "auto")
   ) %>%
-  addLegend("bottomright", pal = ag_pal, values = ~ag_proportion,
+  addLegend(
+    data = ag_proportion,
+    "bottomright", pal = ag_pal, values = ~ag_proportion,
     title = "% of county in ag",
     labFormat = labelFormat(suffix = "%"),
     opacity = 1
   )
 ```
-
-### 
 
 ### Dimension reduction
 
