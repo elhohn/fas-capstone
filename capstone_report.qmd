@@ -103,6 +103,7 @@ library(biscale)
 library(rio)
 library(janitor)
 library(paletteer)
+library(scales)
 
 census_api_key(Sys.getenv("CENSUS_API_KEY"))
 ag_census_api_key <- Sys.getenv("AG_CENSUS_API_KEY")
@@ -120,7 +121,8 @@ options(
 my_crs <- 5070
 
 my_map <- leaflet(options = leafletOptions(minZoom = 4)) %>%
-  addTiles() %>%
+  #addTiles() %>%
+  addProviderTiles(providers$CartoDB.Positron) %>%
   setMaxBounds(
     lng1 = -124.8,
     lat1 = 49.5,
@@ -180,14 +182,15 @@ lamp_sf <- lamp %>%
   drop_na(LATITUDE, LONGITUDE) %>%
   st_as_sf(coords = c("LONGITUDE", "LATITUDE")) %>%
   st_set_crs(4326) %>%
-  st_transform(crs = my_crs)
+  st_transform(4326)
 
 # Load counties data (downloaded somewhere on the interwebs...)
 counties <- st_read('data/cb_2021_us_county_20m/cb_2021_us_county_20m.shp') %>%
   filter(!STATE_NAME %in% c('Alaska', 'Hawaii', 'Puerto Rico')) %>%
-  select(GEOID, NAMELSAD, geometry) %>%
-  st_set_crs(4326) %>%
-  st_transform(my_crs)
+  rename(county_name = NAMELSAD) %>%
+  select(GEOID, county_name, geometry) %>%
+  #st_set_crs(4326) %>%
+  st_transform(4326)
 
 # spatial join points within counties
 lamp_by_county <- counties %>%
@@ -195,50 +198,42 @@ lamp_by_county <- counties %>%
   group_by(GEOID) %>%
   mutate(total_grant = sum(Award.Amount)) %>%
   mutate(lamp_funded = as.factor(ifelse(is.na(Award.Amount) | Award.Amount == 0, 0, 1))) %>%
-  rename(County = NAMELSAD) %>%
-  select(GEOID, County, lamp_funded, Award.Amount)
+  #rename(County = NAMELSAD) %>%
+  select(GEOID, county_name, lamp_funded, Award.Amount)
 ```
+
+#### Distribution of LAMP Grant funding across CONUS
 
 ```{r lamp funded leaflet map}
 
-d_map_lamp <- lamp_sf %>%
-  st_transform(4326)
-
-# # collapse columns of grant category (e.g., TA, infrastructure, etc.) into single column
-# d_map_lamp <- d_map_lamp %>%
-#   pivot_longer(
-#     cols = 'Aggregation':'Not.Specified', 
-#     names_to = "category",
-#     values_to = "value"
-# ) %>%
-#   mutate(category = as.factor(category))
-
+d_map_lamp <- lamp_sf
 d_map_lamp$point_size <- scales::rescale(d_map_lamp$Award.Amount, c(1, 15))
 
+grant_colors <- as.vector(paletteer_d("nbapalettes::thunder")[1:3])
 pal <- colorFactor(
-  palette = 'magma', domain = d_map_lamp$Grant.Type)
+  palette = grant_colors, domain = d_map_lamp$Grant.Type)
+
+labels <- sprintf(
+  "<strong>%s</strong><br/>%s",
+  d_map_lamp$Organization, scales::dollar(d_map_lamp$Award.Amount)
+) %>% lapply(htmltools::HTML)
 
 my_map %>%
-# leaflet(d_map_lamp,
-#         options = leafletOptions(minZoom = 4)) %>%
   addCircleMarkers(
     data = d_map_lamp,
     radius = ~ point_size,
     color = ~pal(Grant.Type),
     stroke = FALSE, 
-    fillOpacity = 0.5
+    fillOpacity = 0.5,
+    label = labels,
+    labelOptions = labelOptions(
+      style = list("font-weight" = "normal", padding = "3px 8px"),
+      textsize = "15px",
+      direction = "auto")
  ) %>%
-  #addProviderTiles(providers$Stadia.AlidadeSmooth) %>%
-  # addTiles() %>%
-  # setMaxBounds(
-  #   lng1 = -124.8,
-  #   lat1 = 49.5,
-  #   lng2 = -66.8,
-  #   lat2 = 24.4) %>%
   addLegend(
     data = d_map_lamp, "bottomright", pal = pal, values = ~Grant.Type,
     title = "Grant Type",
-    #labFormat = labelFormat(prefix = "$"),
     opacity = 1
   ) %>%
   bslib::card(full_screen = TRUE)
@@ -249,56 +244,56 @@ my_map %>%
 ```{r community wealth data prep}
 #| output: false
 
-comm_wealth_url <- 'https://raw.githubusercontent.com/CSU-Local-and-Regional-Food-Systems/USDA-AMS-Data-and-Metrics/main/Indicators%20of%20Community%20Wealth/community_wealth.csv'
-comm_wealth <- read.csv(comm_wealth_url) %>%
-  filter(fips > 100) # remove national level rows
-
-# Function to add leading 0 to 4-digit fips values in comm_wealth to facilitate later joins
-add_leading_zero <- function(x) {
-  # Check if the number has 4 digits
-  ifelse(nchar(x) == 4, paste0("0", x), x)
-}
-
-# apply funcion to fips column
-comm_wealth$fips <- sapply(comm_wealth$fips, add_leading_zero)
+# comm_wealth_url <- 'https://raw.githubusercontent.com/CSU-Local-and-Regional-Food-Systems/USDA-AMS-Data-and-Metrics/main/Indicators%20of%20Community%20Wealth/community_wealth.csv'
+# comm_wealth <- read.csv(comm_wealth_url) %>%
+#   filter(fips > 100) # remove national level rows
+# 
+# # Function to add leading 0 to 4-digit fips values in comm_wealth to facilitate later joins
+# add_leading_zero <- function(x) {
+#   # Check if the number has 4 digits
+#   ifelse(nchar(x) == 4, paste0("0", x), x)
+# }
+# 
+# # apply funcion to fips column
+# comm_wealth$fips <- sapply(comm_wealth$fips, add_leading_zero)
 ```
 
 ```{r wealth data subset}
 #| warnings: false
 
-subsetter <- function(topic) {
-  d <- comm_wealth %>%
-    filter(topic_area == topic) %>%
-    select(fips, year, variable_name, value) %>%
-    group_by(fips, variable_name) %>%
-    summarise(value = mean(value, na.rm = TRUE)) %>%
-    ungroup() %>%
-    pivot_wider(names_from = variable_name, values_from = value)
-  
-  cols <- colnames(select_if(d, is.numeric))
-  d <- d %>%
-    mutate(
-      across(all_of(cols), normalize))
-  
-  d$overall <- rowMeans(d[,cols], na.rm = TRUE)
-  
-  d <- counties %>%
-    rename(County = NAMELSAD) %>%
-    merge(d, by.x = 'GEOID', by.y = 'fips') %>%
-    st_transform(4326) %>%
-    st_set_geometry('geometry')
-  
-  return(d)
-}
-
-infrastructure <- subsetter("Infrastructure")
-food_processors <- subsetter("Food Processors")
-community_resources <- subsetter("Community Resources")
-population <- subsetter("Population")
-financial <- subsetter("Financial")
-food_insecurity <- subsetter("Food Insecurity")
-natural <- subsetter("Natural")
-agriculture <- subsetter("Agriculture")
+# subsetter <- function(topic) {
+#   d <- comm_wealth %>%
+#     filter(topic_area == topic) %>%
+#     select(fips, year, variable_name, value) %>%
+#     group_by(fips, variable_name) %>%
+#     summarise(value = mean(value, na.rm = TRUE)) %>%
+#     ungroup() %>%
+#     pivot_wider(names_from = variable_name, values_from = value)
+#   
+#   cols <- colnames(select_if(d, is.numeric))
+#   d <- d %>%
+#     mutate(
+#       across(all_of(cols), normalize))
+#   
+#   d$overall <- rowMeans(d[,cols], na.rm = TRUE)
+#   
+#   d <- counties %>%
+#     rename(County = NAMELSAD) %>%
+#     merge(d, by.x = 'GEOID', by.y = 'fips') %>%
+#     st_transform(4326) %>%
+#     st_set_geometry('geometry')
+#   
+#   return(d)
+# }
+# 
+# infrastructure <- subsetter("Infrastructure")
+# food_processors <- subsetter("Food Processors")
+# community_resources <- subsetter("Community Resources")
+# population <- subsetter("Population")
+# financial <- subsetter("Financial")
+# food_insecurity <- subsetter("Food Insecurity")
+# natural <- subsetter("Natural")
+# agriculture <- subsetter("Agriculture")
 ```
 
 ```{r wealth map}
@@ -307,169 +302,169 @@ agriculture <- subsetter("Agriculture")
 #bins <- seq(from = 0, to = 1, by = 0.2)
 #pal <- colorBin("YlOrRd", domain = 0:1, bins = bins)
 
-pal_generator <- function(d, pal = 'RdPu') {
-  return(colorQuantile(palette = pal, domain = d$overall, n = 9))
-}
-
-my_map %>%
-# leaflet(options = leafletOptions(minZoom = 4)) %>%
-#   addTiles() %>%
-#   setMaxBounds(
-#     lng1 = -124.8,
-#     lat1 = 49.5,
-#     lng2 = -66.8,
-#     lat2 = 24.4) %>%
-  addPolygons(
-    data = natural,
-    weight = 0.5,
-    color = 'white',
-    fillOpacity = 1,
-    fillColor = pal_generator(natural)(natural$overall),
-    group = "Natural_Resources",
-    ) %>%
-  addPolygons(
-    data = agriculture,
-    weight = 0.5,
-    color = 'white',
-    fillOpacity = 1,
-    fillColor = pal_generator(agriculture)(agriculture$overall),
-    group = "Agricultural_Resources") %>%
-  addPolygons(
-    data = financial,
-    weight = 0.5,
-    color = 'white',
-    fillOpacity = 1,
-    fillColor = pal_generator(financial)(financial$overall),
-    group = "Financial_Resources") %>%
-  addPolygons(
-    data = community_resources,
-    weight = 0.5,
-    color = 'white',
-    fillOpacity = 1,
-    fillColor = pal_generator(community_resources)(community_resources$overall),
-    group = "Community_Resources") %>%
-  addPolygons(
-    data = infrastructure,
-    weight = 0.5,
-    color = 'white',
-    fillOpacity = 1,
-    fillColor = pal_generator(infrastructure)(infrastructure$overall),
-    group = "Infrastructure") %>%
-  addPolygons(
-    data = food_insecurity,
-    weight = 0.5,
-    color = 'white',
-    fillOpacity = 1,
-    fillColor = pal_generator(food_insecurity)(food_insecurity$overall),
-    group = "Food_Insecurity") %>%
-  addPolygons(
-    data = population,
-    weight = 0.5,
-    color = 'white',
-    fillOpacity = 1,
-    fillColor = pal_generator(population)(population$overall),
-    group = "Population") %>%
-  addPolygons(
-    data = food_processors,
-    weight = 0.5,
-    color = 'white',
-    fillOpacity = 1,
-    fillColor = pal_generator(food_processors)(food_processors$overall),
-    group = "Food_Processors") %>%
-  addLegend(
-    "bottomright", 
-    pal = pal_generator(natural), 
-    opacity = 1,
-    values = natural$overall,
-    title = HTML('Natural Resources<br>Index Score'),
-    group = "Natural_Resources",
-    className = "info legend Natural_Resources"
-  ) %>%
-  addLegend(
-    "bottomright", 
-    pal = pal_generator(agriculture), 
-    opacity = 1,
-    values = agriculture$overall,
-    title = HTML('Agricultural Resources<br>Index Score'),
-    group = "Agricultural_Resources",
-    className = 'info legend Agricultural_Resources') %>%
-  addLegend(
-    "bottomright",
-    pal = pal_generator(financial),
-    opacity = 1,
-    values = financial$overall,
-    title = HTML('Financial Resources<br>Index Score'),
-    group = "Financial_Resources",
-    className = "info legend Financial_Resources"
-    ) %>%
-  addLegend(
-    "bottomright",
-    pal = pal_generator(community_resources),
-    opacity = 1,
-    values = community_resources$overall,
-    title = HTML('Commnunity Resources<br>Index Score'),
-    group = "Community_Resources",
-    className = 'info legend Community_Resources') %>%
-  addLegend(
-    "bottomright",
-    pal = pal_generator(food_processors),
-    opacity = 1,
-    values = food_processors$overall,
-    title = HTML('Food Processors<br>Index Score'),
-    group = "Food_Processors",
-    className = "info legend Food_Processors") %>%
-  addLegend(
-    "bottomright",
-    pal = pal_generator(infrastructure),
-    opacity = 1,
-    values = infrastructure$overall,
-    title = HTML('Infrastructure<br>Index Score'),
-    group = "Infrastructure",
-    className = "info legend Infrastructure") %>%
-  addLegend(
-    "bottomright",
-    pal = pal_generator(food_insecurity),
-    opacity = 1,
-    values = food_insecurity$overall,
-    title = HTML('Food Insecurity<br>Index Score'),
-    group = "Food_Insecurity",
-    className = "info legend Food_Insecurity") %>%
-  addLegend(
-    "bottomright",
-    pal = pal_generator(population),
-    opacity = 1,
-    values = population$overall,
-    title = HTML('Population<br>Index Score'),
-    group = "Population",
-    className = "info legend Population") %>%
-  addLayersControl(
-    baseGroups = c(
-      "Infrastructure", 
-      "Food_Insecurity", 
-      "Population", 
-      "Food_Processors",
-      "Community_Resources", 
-      "Financial_Resources",
-      "Natural_Resources",
-      "Agricultural_Resources"
-    ),
-    options = layersControlOptions(collapsed = TRUE)
-  ) %>%
-    htmlwidgets::onRender(
-      "
-        function(el, x) {
-           var updateLegend = function () {
-              var selectedGroup = document.querySelectorAll('input:checked')[0].nextSibling.innerText.substr(1);
-  
-              document.querySelectorAll('.legend').forEach(a => a.hidden=true);
-              document.querySelectorAll('.legend').forEach(l => {
-                 if (l.classList.contains(selectedGroup)) l.hidden=false;
-              });
-           };
-           updateLegend();
-           this.on('baselayerchange', el => updateLegend());
-        }"
-    )
+# pal_generator <- function(d, pal = 'RdPu') {
+#   return(colorQuantile(palette = pal, domain = d$overall, n = 9))
+# }
+# 
+# my_map %>%
+# # leaflet(options = leafletOptions(minZoom = 4)) %>%
+# #   addTiles() %>%
+# #   setMaxBounds(
+# #     lng1 = -124.8,
+# #     lat1 = 49.5,
+# #     lng2 = -66.8,
+# #     lat2 = 24.4) %>%
+#   addPolygons(
+#     data = natural,
+#     weight = 0.5,
+#     color = 'white',
+#     fillOpacity = 1,
+#     fillColor = pal_generator(natural)(natural$overall),
+#     group = "Natural_Resources",
+#     ) %>%
+#   addPolygons(
+#     data = agriculture,
+#     weight = 0.5,
+#     color = 'white',
+#     fillOpacity = 1,
+#     fillColor = pal_generator(agriculture)(agriculture$overall),
+#     group = "Agricultural_Resources") %>%
+#   addPolygons(
+#     data = financial,
+#     weight = 0.5,
+#     color = 'white',
+#     fillOpacity = 1,
+#     fillColor = pal_generator(financial)(financial$overall),
+#     group = "Financial_Resources") %>%
+#   addPolygons(
+#     data = community_resources,
+#     weight = 0.5,
+#     color = 'white',
+#     fillOpacity = 1,
+#     fillColor = pal_generator(community_resources)(community_resources$overall),
+#     group = "Community_Resources") %>%
+#   addPolygons(
+#     data = infrastructure,
+#     weight = 0.5,
+#     color = 'white',
+#     fillOpacity = 1,
+#     fillColor = pal_generator(infrastructure)(infrastructure$overall),
+#     group = "Infrastructure") %>%
+#   addPolygons(
+#     data = food_insecurity,
+#     weight = 0.5,
+#     color = 'white',
+#     fillOpacity = 1,
+#     fillColor = pal_generator(food_insecurity)(food_insecurity$overall),
+#     group = "Food_Insecurity") %>%
+#   addPolygons(
+#     data = population,
+#     weight = 0.5,
+#     color = 'white',
+#     fillOpacity = 1,
+#     fillColor = pal_generator(population)(population$overall),
+#     group = "Population") %>%
+#   addPolygons(
+#     data = food_processors,
+#     weight = 0.5,
+#     color = 'white',
+#     fillOpacity = 1,
+#     fillColor = pal_generator(food_processors)(food_processors$overall),
+#     group = "Food_Processors") %>%
+#   addLegend(
+#     "bottomright", 
+#     pal = pal_generator(natural), 
+#     opacity = 1,
+#     values = natural$overall,
+#     title = HTML('Natural Resources<br>Index Score'),
+#     group = "Natural_Resources",
+#     className = "info legend Natural_Resources"
+#   ) %>%
+#   addLegend(
+#     "bottomright", 
+#     pal = pal_generator(agriculture), 
+#     opacity = 1,
+#     values = agriculture$overall,
+#     title = HTML('Agricultural Resources<br>Index Score'),
+#     group = "Agricultural_Resources",
+#     className = 'info legend Agricultural_Resources') %>%
+#   addLegend(
+#     "bottomright",
+#     pal = pal_generator(financial),
+#     opacity = 1,
+#     values = financial$overall,
+#     title = HTML('Financial Resources<br>Index Score'),
+#     group = "Financial_Resources",
+#     className = "info legend Financial_Resources"
+#     ) %>%
+#   addLegend(
+#     "bottomright",
+#     pal = pal_generator(community_resources),
+#     opacity = 1,
+#     values = community_resources$overall,
+#     title = HTML('Commnunity Resources<br>Index Score'),
+#     group = "Community_Resources",
+#     className = 'info legend Community_Resources') %>%
+#   addLegend(
+#     "bottomright",
+#     pal = pal_generator(food_processors),
+#     opacity = 1,
+#     values = food_processors$overall,
+#     title = HTML('Food Processors<br>Index Score'),
+#     group = "Food_Processors",
+#     className = "info legend Food_Processors") %>%
+#   addLegend(
+#     "bottomright",
+#     pal = pal_generator(infrastructure),
+#     opacity = 1,
+#     values = infrastructure$overall,
+#     title = HTML('Infrastructure<br>Index Score'),
+#     group = "Infrastructure",
+#     className = "info legend Infrastructure") %>%
+#   addLegend(
+#     "bottomright",
+#     pal = pal_generator(food_insecurity),
+#     opacity = 1,
+#     values = food_insecurity$overall,
+#     title = HTML('Food Insecurity<br>Index Score'),
+#     group = "Food_Insecurity",
+#     className = "info legend Food_Insecurity") %>%
+#   addLegend(
+#     "bottomright",
+#     pal = pal_generator(population),
+#     opacity = 1,
+#     values = population$overall,
+#     title = HTML('Population<br>Index Score'),
+#     group = "Population",
+#     className = "info legend Population") %>%
+#   addLayersControl(
+#     baseGroups = c(
+#       "Infrastructure", 
+#       "Food_Insecurity", 
+#       "Population", 
+#       "Food_Processors",
+#       "Community_Resources", 
+#       "Financial_Resources",
+#       "Natural_Resources",
+#       "Agricultural_Resources"
+#     ),
+#     options = layersControlOptions(collapsed = TRUE)
+#   ) %>%
+#     htmlwidgets::onRender(
+#       "
+#         function(el, x) {
+#            var updateLegend = function () {
+#               var selectedGroup = document.querySelectorAll('input:checked')[0].nextSibling.innerText.substr(1);
+#   
+#               document.querySelectorAll('.legend').forEach(a => a.hidden=true);
+#               document.querySelectorAll('.legend').forEach(l => {
+#                  if (l.classList.contains(selectedGroup)) l.hidden=false;
+#               });
+#            };
+#            updateLegend();
+#            this.on('baselayerchange', el => updateLegend());
+#         }"
+#     )
 ```
 
 ### Plot of wealth indices vs Award Amounts
@@ -477,55 +472,55 @@ my_map %>%
 ```{r prepping wealth vs award data}
 
 # join lamp_by_county and individual `overall` scores
-lamp_by_county2 <- lamp_by_county %>%
-  st_drop_geometry()
-
-clean_up <- function(d) {
-  return (d %>% 
-          st_drop_geometry() %>% 
-          select(GEOID, overall))
-}
-
-d <- lamp_by_county2 %>%
-  merge(clean_up(agriculture), by = 'GEOID') %>%
-  rename(agriculture_overall = overall) %>%
-  merge(clean_up(community_resources), by = 'GEOID') %>%
-  rename(community_resources_overall = overall) %>%
-  merge(clean_up(financial), by = 'GEOID') %>%
-  rename(financial_overall = overall) %>%
-  merge(clean_up(food_insecurity), by = 'GEOID') %>%
-  rename(food_insecurity_overall = overall) %>%
-  merge(clean_up(food_processors), by = 'GEOID') %>%
-  rename(food_processors_overall = overall) %>%
-  merge(clean_up(infrastructure), by = 'GEOID') %>%
-  rename(infrastructure_overall = overall) %>%
-  merge(clean_up(natural), by = 'GEOID') %>%
-  rename(natural_overall = overall) %>%
-  merge(clean_up(population), by = 'GEOID') %>%
-  rename(population_overall = overall) %>%
-  drop_na()
-
-pop_url <- 'https://www.ers.usda.gov/webdocs/DataFiles/48747/PopulationEstimates.csv?v=8269.9'
-
-pop <- read.csv(pop_url) %>%
-  filter(Attribute == 'CENSUS_2020_POP',
-         FIPStxt != 0) %>%
-  select(FIPStxt, Value) %>%
-  rename(
-    population_2020 = Value,
-    fips = FIPStxt
-    )
-
-# re-use function from earlier to add leading zeros to FIPS
-pop$fips <- sapply(pop$fips, add_leading_zero)
-
-# clean up lamp data and add total county grant $ column before joining
-d <- d %>%
-  merge(pop, by.x = 'GEOID', by.y = 'fips') %>%
-  mutate(award_per_capita = Award.Amount / population_2020) %>%
-  select(-population_2020)
-
-#write_csv(d, 'd.csv')
+# lamp_by_county2 <- lamp_by_county %>%
+#   st_drop_geometry()
+# 
+# clean_up <- function(d) {
+#   return (d %>% 
+#           st_drop_geometry() %>% 
+#           select(GEOID, overall))
+# }
+# 
+# d <- lamp_by_county2 %>%
+#   merge(clean_up(agriculture), by = 'GEOID') %>%
+#   rename(agriculture_overall = overall) %>%
+#   merge(clean_up(community_resources), by = 'GEOID') %>%
+#   rename(community_resources_overall = overall) %>%
+#   merge(clean_up(financial), by = 'GEOID') %>%
+#   rename(financial_overall = overall) %>%
+#   merge(clean_up(food_insecurity), by = 'GEOID') %>%
+#   rename(food_insecurity_overall = overall) %>%
+#   merge(clean_up(food_processors), by = 'GEOID') %>%
+#   rename(food_processors_overall = overall) %>%
+#   merge(clean_up(infrastructure), by = 'GEOID') %>%
+#   rename(infrastructure_overall = overall) %>%
+#   merge(clean_up(natural), by = 'GEOID') %>%
+#   rename(natural_overall = overall) %>%
+#   merge(clean_up(population), by = 'GEOID') %>%
+#   rename(population_overall = overall) %>%
+#   drop_na()
+# 
+# pop_url <- 'https://www.ers.usda.gov/webdocs/DataFiles/48747/PopulationEstimates.csv?v=8269.9'
+# 
+# pop <- read.csv(pop_url) %>%
+#   filter(Attribute == 'CENSUS_2020_POP',
+#          FIPStxt != 0) %>%
+#   select(FIPStxt, Value) %>%
+#   rename(
+#     population_2020 = Value,
+#     fips = FIPStxt
+#     )
+# 
+# # re-use function from earlier to add leading zeros to FIPS
+# pop$fips <- sapply(pop$fips, add_leading_zero)
+# 
+# # clean up lamp data and add total county grant $ column before joining
+# d <- d %>%
+#   merge(pop, by.x = 'GEOID', by.y = 'fips') %>%
+#   mutate(award_per_capita = Award.Amount / population_2020) %>%
+#   select(-population_2020)
+# 
+# #write_csv(d, 'd.csv')
 ```
 
 ```{r wealth vs award scatter plots}
@@ -534,45 +529,45 @@ d <- d %>%
 #| out-height: 5in
 #| fig-align: center
 
-overall_columns <- grep("_overall$", names(d), value = TRUE)
-new_names <- c(
-  'Agricultural Resources',
-  'Community Resources',
-  'Financial Resources',
-  'Food Insecurity',
-  'Food Processors',
-  'Infrastructure',
-  'Natural Capital',
-  'Population'
-)
-d2 <- d %>% 
-  rename_at(vars(overall_columns), ~ new_names) %>%
-  filter(!County %in% c('Menominee County', 'Kidder County'))
-
-d2 <- reshape2::melt(
-  d2, id.vars = c('GEOID', 'County', 'lamp_funded', 'award_per_capita'), 
-  measure.vars = new_names)
-
-# Create a scatter plot with facets
-p <- ggplot(d2 %>% select(-c(GEOID, lamp_funded)) %>% ungroup(), 
-            aes(x = award_per_capita, 
-                y = value)) +
-     geom_point(aes(color = variable, 
-                text = paste("County:", County)),
-                alpha = 0.7, size = 2) +
-     geom_smooth(method = 'lm', se = FALSE, color = 'grey25', linewidth = .4) +
-     ggthemes::scale_color_solarized() +
-     facet_wrap(~ variable, ncol = 2) +
-     labs(title = 'Community Wealth Indices vs LAMP $ Per Capita, 2006-2022',
-          x = 'Total Award $ Per Capita, 2006-2022',
-          y = 'Index Value',
-          caption = "Note: two counties, Menominee County (Michigan) and Kidder County (North Dakota), were removed from the dataset used for this plot because they were identified as outliers.") +
-     ylim(0, 1) +
-     theme_minimal() +
-     theme(legend.position = "none")
-
-# Convert ggplot object to plotly for interactivity
-ggplotly(p, tooltip = "text") %>% config(displayModeBar = FALSE)
+# overall_columns <- grep("_overall$", names(d), value = TRUE)
+# new_names <- c(
+#   'Agricultural Resources',
+#   'Community Resources',
+#   'Financial Resources',
+#   'Food Insecurity',
+#   'Food Processors',
+#   'Infrastructure',
+#   'Natural Capital',
+#   'Population'
+# )
+# d2 <- d %>% 
+#   rename_at(vars(overall_columns), ~ new_names) %>%
+#   filter(!County %in% c('Menominee County', 'Kidder County'))
+# 
+# d2 <- reshape2::melt(
+#   d2, id.vars = c('GEOID', 'County', 'lamp_funded', 'award_per_capita'), 
+#   measure.vars = new_names)
+# 
+# # Create a scatter plot with facets
+# p <- ggplot(d2 %>% select(-c(GEOID, lamp_funded)) %>% ungroup(), 
+#             aes(x = award_per_capita, 
+#                 y = value)) +
+#      geom_point(aes(color = variable, 
+#                 text = paste("County:", County)),
+#                 alpha = 0.7, size = 2) +
+#      geom_smooth(method = 'lm', se = FALSE, color = 'grey25', linewidth = .4) +
+#      ggthemes::scale_color_solarized() +
+#      facet_wrap(~ variable, ncol = 2) +
+#      labs(title = 'Community Wealth Indices vs LAMP $ Per Capita, 2006-2022',
+#           x = 'Total Award $ Per Capita, 2006-2022',
+#           y = 'Index Value',
+#           caption = "Note: two counties, Menominee County (Michigan) and Kidder County (North Dakota), were removed from the dataset used for this plot because they were identified as outliers.") +
+#      ylim(0, 1) +
+#      theme_minimal() +
+#      theme(legend.position = "none")
+# 
+# # Convert ggplot object to plotly for interactivity
+# ggplotly(p, tooltip = "text") %>% config(displayModeBar = FALSE)
 ```
 
 ### Urban-Rural continuum data
@@ -580,41 +575,41 @@ ggplotly(p, tooltip = "text") %>% config(displayModeBar = FALSE)
 This information can be used to control for the location of each county in relation to rural (and potentially agricultural) land.
 
 ```{r ruc data}
-
-ruc_url <- 'https://www.ers.usda.gov/webdocs/DataFiles/53251/Ruralurbancontinuumcodes2023.xlsx?v=3167.7'
-
-ruc <- read.xlsx(ruc_url)
-
-ruc <- counties %>%
-  merge(ruc,  by.x = 'GEOID', by.y = 'FIPS') %>%
-  mutate(RUCC_2023 = as.factor(RUCC_2023)) %>%
-  st_transform(4326)
-
-ruc_colors <- c('#440154', '#472d7b', '#3b528b', '#2c728e', '#21918c', 
-                  '#28ae80', '#5ec962', '#addc30', '#fde725')
-ruc_pal <- colorFactor(palette = ruc_colors, domain = ruc$RUCC_2023)
-
-labels <- sprintf(
-  "<strong>%s</strong><br/>%s",
-  ruc$NAMELSAD, ruc$Description
-) %>% lapply(htmltools::HTML)
-
-my_map %>%
-# leaflet(ruc) %>%
-#   addTiles() %>%
-  addPolygons(
-    data = ruc,
-    fillColor = ~ruc_pal(RUCC_2023),
-    color = 'white',
-    opacity = 1,
-    fillOpacity = 1,
-    weight = 0.2,
-    label = labels,
-    labelOptions = labelOptions(
-      style = list("font-weight" = "normal", padding = "3px 8px"),
-      textsize = "15px",
-      direction = "auto")
-  )
+# 
+# ruc_url <- 'https://www.ers.usda.gov/webdocs/DataFiles/53251/Ruralurbancontinuumcodes2023.xlsx?v=3167.7'
+# 
+# ruc <- read.xlsx(ruc_url)
+# 
+# ruc <- counties %>%
+#   merge(ruc,  by.x = 'GEOID', by.y = 'FIPS') %>%
+#   mutate(RUCC_2023 = as.factor(RUCC_2023)) %>%
+#   st_transform(4326)
+# 
+# ruc_colors <- c('#440154', '#472d7b', '#3b528b', '#2c728e', '#21918c', 
+#                   '#28ae80', '#5ec962', '#addc30', '#fde725')
+# ruc_pal <- colorFactor(palette = ruc_colors, domain = ruc$RUCC_2023)
+# 
+# labels <- sprintf(
+#   "<strong>%s</strong><br/>%s",
+#   ruc$NAMELSAD, ruc$Description
+# ) %>% lapply(htmltools::HTML)
+# 
+# my_map %>%
+# # leaflet(ruc) %>%
+# #   addTiles() %>%
+#   addPolygons(
+#     data = ruc,
+#     fillColor = ~ruc_pal(RUCC_2023),
+#     color = 'white',
+#     opacity = 1,
+#     fillOpacity = 1,
+#     weight = 0.2,
+#     label = labels,
+#     labelOptions = labelOptions(
+#       style = list("font-weight" = "normal", padding = "3px 8px"),
+#       textsize = "15px",
+#       direction = "auto")
+#   )
   
 ```
 
@@ -624,162 +619,162 @@ From Consumer Financial Bureau data
 
 ```{r underserved communities data}
 
-rural_data_url <- 'https://files.consumerfinance.gov/f/documents/cfpb_rural-list_2024.csv'
-rural_data <- read.csv(rural_data_url)
-rural_data$FIPS.Code <- sapply(rural_data$FIPS.Code, add_leading_zero)
-
-underserved_data_url <- 'https://files.consumerfinance.gov/f/documents/cfpb_underserved-list_2024.csv'
-underserved_data <- read.csv(underserved_data_url)
-underserved_data$FIPS.Code <- sapply(underserved_data$FIPS.Code, add_leading_zero)
-
-underserved <- counties %>%
-  mutate(
-    is_rural = as.factor(ifelse(GEOID %in% rural_data$FIPS.Code, 1, 0)),
-    is_underserved = as.factor(ifelse(GEOID %in% underserved_data$FIPS.Code, 1, 0))
-    ) %>%
-  st_transform(4326)
-
-bivar_pal <- function(n){
-  return(c('#d3d3d3', '#9e3547', '#4279b0', '#311e3b'))
-}
-
-my_map %>%
-# leaflet() %>%
-#   addTiles() %>%
-  bivariatechoropleths::addBivariateChoropleth(
-     map_data = underserved,
-     var1_name = is_rural,
-     var2_name = is_underserved,
-     ntiles= 2,
-     var1_label = "Rural",
-     var2_label = "Underserved",
-     weight = 1,
-     fillOpacity = 1,
-     color = "grey",
-     paletteFunction = bivar_pal, #pals::stevens.pinkblue,
-     highlightOptions = leaflet::highlightOptions(color = "orange",
-                                                  weight = 2,
-                                                  opacity = 1))
+# rural_data_url <- 'https://files.consumerfinance.gov/f/documents/cfpb_rural-list_2024.csv'
+# rural_data <- read.csv(rural_data_url)
+# rural_data$FIPS.Code <- sapply(rural_data$FIPS.Code, add_leading_zero)
+# 
+# underserved_data_url <- 'https://files.consumerfinance.gov/f/documents/cfpb_underserved-list_2024.csv'
+# underserved_data <- read.csv(underserved_data_url)
+# underserved_data$FIPS.Code <- sapply(underserved_data$FIPS.Code, add_leading_zero)
+# 
+# underserved <- counties %>%
+#   mutate(
+#     is_rural = as.factor(ifelse(GEOID %in% rural_data$FIPS.Code, 1, 0)),
+#     is_underserved = as.factor(ifelse(GEOID %in% underserved_data$FIPS.Code, 1, 0))
+#     ) %>%
+#   st_transform(4326)
+# 
+# bivar_pal <- function(n){
+#   return(c('#d3d3d3', '#9e3547', '#4279b0', '#311e3b'))
+# }
+# 
+# my_map %>%
+# # leaflet() %>%
+# #   addTiles() %>%
+#   bivariatechoropleths::addBivariateChoropleth(
+#      map_data = underserved,
+#      var1_name = is_rural,
+#      var2_name = is_underserved,
+#      ntiles= 2,
+#      var1_label = "Rural",
+#      var2_label = "Underserved",
+#      weight = 1,
+#      fillOpacity = 1,
+#      color = "grey",
+#      paletteFunction = bivar_pal, #pals::stevens.pinkblue,
+#      highlightOptions = leaflet::highlightOptions(color = "orange",
+#                                                   weight = 2,
+#                                                   opacity = 1))
 ```
 
 ### Poverty
 
 ```{r}
 
-pov_url <- 'https://www2.census.gov/programs-surveys/saipe/datasets/2022/2022-state-and-county/est22all.xls'
-
-pov <- rio::import(file = pov_url)
-pov <- tail(pov, -2) %>%
-  row_to_names(row_number = 1)
-
-pov$FIPS <- paste0(pov$`State FIPS Code`, pov$`County FIPS Code`)
-
-pov <- data.frame(pov) %>%
-  filter(County.FIPS.Code != '000') %>%
-  mutate(poverty_rate = as.numeric(Poverty.Percent..All.Ages)) %>%
-  select(FIPS, poverty_rate)
-
-pov_sf <- counties %>%
-  merge(pov, by.x = 'GEOID', by.y = 'FIPS') %>%
-  st_transform(4326)
-
-pov_pal <- colorNumeric(palette = 'magma', domain = pov_sf$poverty_rate, reverse = TRUE)
-
-labels <- sprintf(
-  "<strong>%s</strong><br/>poverty rate: %s percent",
-  pov_sf$NAMELSAD, pov_sf$poverty_rate
-) %>% lapply(htmltools::HTML)
-
-my_map %>%
-# leaflet(pov_sf) %>%
-#   addTiles() %>%
-  addPolygons(
-    data = pov_sf,
-    fillColor = ~pov_pal(poverty_rate),
-    color = 'white',
-    opacity = 1,
-    fillOpacity = 1,
-    weight = 0.2,
-    label = labels,
-    labelOptions = labelOptions(
-      style = list("font-weight" = "normal", padding = "3px 8px"),
-      textsize = "15px",
-      direction = "auto")
-  ) %>%
-  addLegend(
-    data = pov_sf,
-    "bottomright", pal = pov_pal, values = ~poverty_rate,
-    title = "Poverty Rate",
-    #labFormat = labelFormat(prefix = "$"),
-    opacity = 1
-  )
+# pov_url <- 'https://www2.census.gov/programs-surveys/saipe/datasets/2022/2022-state-and-county/est22all.xls'
+# 
+# pov <- rio::import(file = pov_url)
+# pov <- tail(pov, -2) %>%
+#   row_to_names(row_number = 1)
+# 
+# pov$FIPS <- paste0(pov$`State FIPS Code`, pov$`County FIPS Code`)
+# 
+# pov <- data.frame(pov) %>%
+#   filter(County.FIPS.Code != '000') %>%
+#   mutate(poverty_rate = as.numeric(Poverty.Percent..All.Ages)) %>%
+#   select(FIPS, poverty_rate)
+# 
+# pov_sf <- counties %>%
+#   merge(pov, by.x = 'GEOID', by.y = 'FIPS') %>%
+#   st_transform(4326)
+# 
+# pov_pal <- colorNumeric(palette = 'magma', domain = pov_sf$poverty_rate, reverse = TRUE)
+# 
+# labels <- sprintf(
+#   "<strong>%s</strong><br/>poverty rate: %s percent",
+#   pov_sf$NAMELSAD, pov_sf$poverty_rate
+# ) %>% lapply(htmltools::HTML)
+# 
+# my_map %>%
+# # leaflet(pov_sf) %>%
+# #   addTiles() %>%
+#   addPolygons(
+#     data = pov_sf,
+#     fillColor = ~pov_pal(poverty_rate),
+#     color = 'white',
+#     opacity = 1,
+#     fillOpacity = 1,
+#     weight = 0.2,
+#     label = labels,
+#     labelOptions = labelOptions(
+#       style = list("font-weight" = "normal", padding = "3px 8px"),
+#       textsize = "15px",
+#       direction = "auto")
+#   ) %>%
+#   addLegend(
+#     data = pov_sf,
+#     "bottomright", pal = pov_pal, values = ~poverty_rate,
+#     title = "Poverty Rate",
+#     #labFormat = labelFormat(prefix = "$"),
+#     opacity = 1
+#   )
 ```
 
 ### Ag land
 
 ```{r get ag census farmland data}
 
-# run this to see all of your options for data_item argument
-#View(allDataItem)
-ag_acres <- getQuickstat(
-  key = ag_census_api_key,
-  program = "CENSUS",
-  data_item = "AG LAND, CROPLAND - ACRES",
-  geographic_level = "COUNTY",
-  domain = "TOTAL",
-  year = "2022",
-  state = NULL,
-  geometry = TRUE,
-  lower48 = TRUE)
-  
-ag_acres <- ag_acres %>%
-  mutate(area_meters = st_area(ag_acres),
-         county_acres = area_meters * 0.000247105)
-
-ag_acres$county_acres <- units::set_units(st_area(ag_acres), "acre")
-
-ag_land <- ag_acres %>%
-  select(GEOID, Value, county_acres) %>%
-  drop_na() %>%
-  rename(ag_acres = Value) %>%
-  mutate(ag_proportion = round(ag_acres / county_acres * 100), 0) %>%
-  select(GEOID, ag_proportion) %>%
-  drop_units() %>%
-  st_transform(4326)
-
-ag_colors <- as.vector(paletteer_d("Redmonder::sPBIYlGn"))
-ag_pal <- colorBin(palette = ag_colors, 
-                   domain = ag_land$ag_proportion,
-                   bins = 9)
-
-labels <- sprintf(
-  "<strong>%s</strong><br/>Percentage in ag: %s&#37",
-  ag_land$GEOID, ag_land$ag_proportion) %>% 
-  lapply(htmltools::HTML)
-
-my_map %>%
-# leaflet(ag_proportion) %>%
-#   addTiles() %>%
-  addPolygons(
-    data = ag_land,
-    fillColor = ~ag_pal(ag_proportion),
-    color = 'white',
-    opacity = 1,
-    fillOpacity = 1,
-    weight = 0.2,
-    label = labels,
-    labelOptions = labelOptions(
-      style = list("font-weight" = "normal", padding = "3px 8px"),
-      textsize = "15px",
-      direction = "auto")
-  ) %>%
-  addLegend(
-    data = ag_land,
-    "bottomright", pal = ag_pal, values = ~ag_proportion,
-    title = "% of county in ag",
-    labFormat = labelFormat(suffix = "%"),
-    opacity = 1
-  )
+# # run this to see all of your options for data_item argument
+# #View(allDataItem)
+# ag_acres <- getQuickstat(
+#   key = ag_census_api_key,
+#   program = "CENSUS",
+#   data_item = "AG LAND, CROPLAND - ACRES",
+#   geographic_level = "COUNTY",
+#   domain = "TOTAL",
+#   year = "2022",
+#   state = NULL,
+#   geometry = TRUE,
+#   lower48 = TRUE)
+#   
+# ag_acres <- ag_acres %>%
+#   mutate(area_meters = st_area(ag_acres),
+#          county_acres = area_meters * 0.000247105)
+# 
+# ag_acres$county_acres <- units::set_units(st_area(ag_acres), "acre")
+# 
+# ag_land <- ag_acres %>%
+#   select(GEOID, Value, county_acres) %>%
+#   drop_na() %>%
+#   rename(ag_acres = Value) %>%
+#   mutate(ag_proportion = round(ag_acres / county_acres * 100), 0) %>%
+#   select(GEOID, ag_proportion) %>%
+#   drop_units() %>%
+#   st_transform(4326)
+# 
+# ag_colors <- as.vector(paletteer_d("Redmonder::sPBIYlGn"))
+# ag_pal <- colorBin(palette = ag_colors, 
+#                    domain = ag_land$ag_proportion,
+#                    bins = 9)
+# 
+# labels <- sprintf(
+#   "<strong>%s</strong><br/>Percentage in ag: %s&#37",
+#   ag_land$GEOID, ag_land$ag_proportion) %>% 
+#   lapply(htmltools::HTML)
+# 
+# my_map %>%
+# # leaflet(ag_proportion) %>%
+# #   addTiles() %>%
+#   addPolygons(
+#     data = ag_land,
+#     fillColor = ~ag_pal(ag_proportion),
+#     color = 'white',
+#     opacity = 1,
+#     fillOpacity = 1,
+#     weight = 0.2,
+#     label = labels,
+#     labelOptions = labelOptions(
+#       style = list("font-weight" = "normal", padding = "3px 8px"),
+#       textsize = "15px",
+#       direction = "auto")
+#   ) %>%
+#   addLegend(
+#     data = ag_land,
+#     "bottomright", pal = ag_pal, values = ~ag_proportion,
+#     title = "% of county in ag",
+#     labFormat = labelFormat(suffix = "%"),
+#     opacity = 1
+#   )
 ```
 
 ## Combine data
@@ -787,79 +782,107 @@ my_map %>%
 ```{r}
 
 # start with full list of counties and build from there
-df <- counties %>%
-  select(-NAMELSAD) %>%
-  st_drop_geometry() %>%
-  merge(infrastructure, by = 'GEOID') %>%
-  select(-c(overall, County, geometry)) %>%
-  st_drop_geometry() %>%
-  merge(food_processors, by = 'GEOID') %>%
-  select(-c(overall, County, geometry)) %>%
-  st_drop_geometry() %>%
-  merge(community_resources, by = 'GEOID') %>%
-  select(-c(overall, County, geometry)) %>%
-  st_drop_geometry() %>%
-  merge(population, by = 'GEOID') %>%
-  select(-c(overall, County, geometry)) %>%
-  st_drop_geometry() %>%
-  merge(financial, by = 'GEOID') %>%
-  select(-c(overall, County, geometry)) %>%
-  st_drop_geometry() %>%
-  merge(food_insecurity, by = 'GEOID') %>%
-  select(-c(overall, County, geometry)) %>%
-  st_drop_geometry() %>%
-  merge(natural, by = 'GEOID') %>%
-  select(-c(overall, County, geometry)) %>%
-  st_drop_geometry() %>%
-  merge(agriculture, by = 'GEOID') %>%
-  select(-c(overall, County, geometry)) %>%
-  st_drop_geometry() %>%
-  merge(select(ruc, c(GEOID, RUCC_2023)), by = 'GEOID') %>%
-  select(-geometry) %>%
-  st_drop_geometry() %>%
-  merge(select(underserved, c(GEOID, is_rural, is_underserved)), by = 'GEOID') %>%
-  select(-geometry) %>%
-  st_drop_geometry() %>%
-  merge(pov, by.x = 'GEOID', by.y = 'FIPS') %>%
-  merge(ag_land, by = 'GEOID') %>%
-  select(-geometry) %>%
-  st_drop_geometry()
+# df <- counties %>%
+#   select(-NAMELSAD) %>%
+#   st_drop_geometry() %>%
+#   merge(infrastructure, by = 'GEOID') %>%
+#   select(-c(overall, County, geometry)) %>%
+#   st_drop_geometry() %>%
+#   merge(food_processors, by = 'GEOID') %>%
+#   select(-c(overall, County, geometry)) %>%
+#   st_drop_geometry() %>%
+#   merge(community_resources, by = 'GEOID') %>%
+#   select(-c(overall, County, geometry)) %>%
+#   st_drop_geometry() %>%
+#   merge(population, by = 'GEOID') %>%
+#   select(-c(overall, County, geometry)) %>%
+#   st_drop_geometry() %>%
+#   merge(financial, by = 'GEOID') %>%
+#   select(-c(overall, County, geometry)) %>%
+#   st_drop_geometry() %>%
+#   merge(food_insecurity, by = 'GEOID') %>%
+#   select(-c(overall, County, geometry)) %>%
+#   st_drop_geometry() %>%
+#   merge(natural, by = 'GEOID') %>%
+#   select(-c(overall, County, geometry)) %>%
+#   st_drop_geometry() %>%
+#   merge(agriculture, by = 'GEOID') %>%
+#   select(-c(overall, County, geometry)) %>%
+#   st_drop_geometry() %>%
+#   merge(select(ruc, c(GEOID, RUCC_2023)), by = 'GEOID') %>%
+#   select(-geometry) %>%
+#   st_drop_geometry() %>%
+#   merge(select(underserved, c(GEOID, is_rural, is_underserved)), by = 'GEOID') %>%
+#   select(-geometry) %>%
+#   st_drop_geometry() %>%
+#   merge(pov, by.x = 'GEOID', by.y = 'FIPS') %>%
+#   merge(ag_land, by = 'GEOID') %>%
+#   select(-geometry) %>%
+#   st_drop_geometry()
 ```
 
 ## Cluster analysis
 
 ```{r}
 
-df <- df %>% 
-  column_to_rownames(., var = "GEOID") %>%
-  drop_na()
-df <- sapply(df, as.numeric)
-
-# normalize the data to range of [0, 1]
-df_norm <- apply(df, 2, normalize)
-df_norm <- as.data.frame(df_norm)
-
-result <- NbClust(df_norm, diss = NULL, distance = "euclidean",
-                  min.nc = 3, max.nc = 30, method = "kmeans",
-                  index = "kl")
-
-print(result$All.index)
-# result$Best.nc
-# result$Best.partition
-membership <- result$Best.partition
-
-# add cluster membership vector to data set
-df <- data.frame(df)
-df$cluster <- membership
-
-# add fips code back
-#soc_cap$fips <- fips
-
-# soc_cap <- soc_cap %>%
-#   select(fips, everything())
+# df <- df %>% 
+#   column_to_rownames(., var = "GEOID") %>%
+#   drop_na()
+# df <- sapply(df, as.numeric)
+# 
+# # normalize the data to range of [0, 1]
+# df_norm <- apply(df, 2, normalize)
+# df_norm <- as.data.frame(df_norm)
+# 
+# result <- NbClust(df_norm, diss = NULL, distance = "euclidean",
+#                   min.nc = 3, max.nc = 30, method = "kmeans",
+#                   index = "kl")
+# 
+# print(result$All.index)
+# # result$Best.nc
+# # result$Best.partition
+# membership <- result$Best.partition
+# 
+# # add cluster membership vector to data set
+# df <- data.frame(df)
+# df$cluster <- membership
+# 
+# # add fips code back
+# #soc_cap$fips <- fips
+# 
+# # soc_cap <- soc_cap %>%
+# #   select(fips, everything())
 ```
 
 ## Cluster exploration
+
+```{r}
+
+# df2 <- reshape2::melt(
+#   df, id.vars = c('cluster'))
+# 
+# grp1 <- colnames(df)[1:4]
+# 
+# tests <- df2 %>%
+#   group_by(variable, cluster) %>%
+#   summarize(mean = mean(value))
+# 
+# p <- ggplot(filter(df2, variable %in% grp1), aes(cluster, value), shape = 21) +
+#   geom_jitter(
+#     aes(color=factor(cluster)),
+#     shape=21, size = 1, alpha = 0.5, fill = 'grey', stroke = 0.9) + 
+#       # scale_colour_manual(
+#       #   values=c("white", "darkgreen"), 
+#       #   labels = c("Did not receive\nLAMP funding", "Received\nLAMP funding")) +
+#   facet_wrap(~ variable, ncol = 2, scales = 'free_y') +
+#   theme_minimal() #+
+#   # labs(title="County-level Social Capital Index, by cluster",
+#   #      x ="Social Capital Cluster", y = "Social Capital Index",
+#   #      color = "") +
+#   # theme(legend.position="top")
+#   
+# p
+```
 
 ### Dimension reduction
 
@@ -867,58 +890,84 @@ Use principal component analysis (PCA) to reduce dimensionality of datasets and 
 
 ```{r pc eh}
 
-pca_prep <- function(d){
-  rownames(d) <- d$GEOID
-  d <- d %>% 
-    st_drop_geometry() %>%
-    drop_na() %>%
-    select(-c(GEOID, County, overall))
-  return(d)
-}
+# pca_prep <- function(d){
+#   rownames(d) <- d$GEOID
+#   d <- d %>% 
+#     st_drop_geometry() %>%
+#     drop_na() %>%
+#     select(-c(GEOID, County, overall))
+#   return(d)
+# }
+# 
+# pca_reduce <- function(d){
+#   pca_results <- PCA(pca_prep(d), graph = FALSE)
+#   eig_keepers <- data.frame(pca_results$eig) %>% 
+#     filter(eigenvalue >= 1.0)
+#   comps <- nrow(eig_keepers)
+#   if (comps > 0) {
+#     scores <- pca_results$var$coord %>% as_tibble()
+#     df_reduced <- scores[,1:comps]
+#     colnames(df_reduced) <- paste(deparse(substitute(d)), colnames(df_reduced), sep = "_")
+#     return(data.frame(df_reduced))
+#   } else {
+#     return(NULL)
+#   }
+# }
+# 
+# # infrastructure
+# infrastructure_pc <- pca_reduce(infrastructure)
+# # infrastructure_correlation <- cor(pca_prep(infrastructure), use = "complete.obs")
+# # corrplot(correlation, #method = 'square', 
+# #             tl.cex = 0.8, 
+# #          tl.col = 'black', tl.srt = 45,
+# #          type = 'upper', order = "hclust")
+# 
+# food_processors_pc <- pca_reduce(food_processors)
+# community_resources_pc <- pca_reduce(community_resources)
+# population_pc <- pca_reduce(population)
+# financial_pc <- pca_reduce(financial)
+# food_insecurity_pc <- pca_reduce(food_insecurity)
+# natural_pc <- pca_reduce(natural)
+# agriculture_pc <- pca_reduce(agriculture)
+# 
+# all_pcs <- infrastructure_pc %>%
+#   merge(food_processors_pc, by = 0) %>%
+#   select(-Row.names) %>%
+#   merge(community_resources_pc, by = 0) %>%
+#   select(-Row.names) %>%
+#   merge(population_pc, by = 0) %>%
+#   select(-Row.names) %>%
+#   merge(financial_pc, by = 0) %>%
+#   select(-Row.names) %>%
+#   merge(natural_pc, by = 0) %>%
+#   select(-Row.names) %>%
+#   merge(agriculture_pc, by = 0) %>%
+#   select(-Row.names)
 
-pca_reduce <- function(d){
-  pca_results <- PCA(pca_prep(d), graph = FALSE)
-  eig_keepers <- data.frame(pca_results$eig) %>% 
-    filter(eigenvalue >= 1.0)
-  comps <- nrow(eig_keepers)
-  if (comps > 0) {
-    scores <- pca_results$ind$coord %>% as_tibble()
-    df_reduced <- scores[,1:comps]
-    colnames(df_reduced) <- paste(deparse(substitute(d)), colnames(df_reduced), sep = "_")
-    return(data.frame(df_reduced))
-  } else {
-    return(NULL)
-  }
-}
+```
 
-# infrastructure
-infrastructure_pc <- pca_reduce(infrastructure)
-# infrastructure_correlation <- cor(pca_prep(infrastructure), use = "complete.obs")
-# corrplot(correlation, #method = 'square', 
-#             tl.cex = 0.8, 
-#          tl.col = 'black', tl.srt = 45,
-#          type = 'upper', order = "hclust")
+## Regression
 
-food_processors_pc <- pca_reduce(food_processors)
-community_resources_pc <- pca_reduce(community_resources)
-population_pc <- pca_reduce(population)
-financial_pc <- pca_reduce(financial)
-food_insecurity_pc <- pca_reduce(food_insecurity)
-natural_pc <- pca_reduce(natural)
-agriculture_pc <- pca_reduce(agriculture)
+```{r regression analysis}
 
-all_pcs <- infrastructure_pc %>%
-  merge(food_processors_pc, by = 0) %>%
-  select(-Row.names) %>%
-  merge(community_resources_pc, by = 0) %>%
-  select(-Row.names) %>%
-  merge(population_pc, by = 0) %>%
-  select(-Row.names) %>%
-  merge(financial_pc, by = 0) %>%
-  select(-Row.names) %>%
-  merge(natural_pc, by = 0) %>%
-  select(-Row.names) %>%
-  merge(agriculture_pc, by = 0) %>%
-  select(-Row.names)
-
+# test <- df %>%
+#   merge(select(lamp_by_county, c(GEOID, lamp_funded)), by = 'GEOID') %>%
+#   st_drop_geometry() %>%
+#   select(-geometry)
+#   
+# # start with just a few variables as predictors
+# predictors <- names(test)[names(test) != 'lamp_funded']
+# 
+# # Prepare the model formula
+# denyprobit <- glm(paste("lamp_funded ~", paste(predictors[1:5], collapse = " + ")),
+#                   family = binomial(link = "probit"), 
+#                   data = test)
+# 
+# coeftest(denyprobit, vcov. = vcovHC, type = "HC1")
+# 
+# denylogit <- glm(lamp_funded ~ soc_cap_index, # + soc_cap_cluster, # + RUCC_2023, 
+#                  family = binomial(link = "logit"), 
+#                  data = df)
+# 
+# coeftest(denylogit, vcov. = vcovHC, type = "HC1")
 ```
