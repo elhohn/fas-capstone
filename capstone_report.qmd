@@ -182,7 +182,8 @@ lamp_by_county <- counties %>%
   group_by(GEOID) %>%
   mutate(total_grant = sum(Award.Amount)) %>%
   mutate(lamp_funded = as.factor(ifelse(is.na(Award.Amount) | Award.Amount == 0, 0, 1))) %>%
-  select(GEOID, NAMELSAD, lamp_funded, Award.Amount)
+  rename(County = NAMELSAD) %>%
+  select(GEOID, County, lamp_funded, Award.Amount)
 ```
 
 ```{r lamp funded leaflet map}
@@ -252,8 +253,8 @@ comm_wealth$fips <- sapply(comm_wealth$fips, add_leading_zero)
 subsetter <- function(topic) {
   d <- comm_wealth %>%
     filter(topic_area == topic) %>%
-    select(fips, year, variable_name, value, county_name) %>%
-    group_by(fips, variable_name, county_name) %>%
+    select(fips, year, variable_name, value) %>%
+    group_by(fips, variable_name) %>%
     summarise(value = mean(value, na.rm = TRUE)) %>%
     ungroup() %>%
     pivot_wider(names_from = variable_name, values_from = value)
@@ -266,6 +267,7 @@ subsetter <- function(topic) {
   d$overall <- rowMeans(d[,cols], na.rm = TRUE)
   
   d <- counties %>%
+    rename(County = NAMELSAD) %>%
     merge(d, by.x = 'GEOID', by.y = 'fips') %>%
     st_transform(4326) %>%
     st_set_geometry('geometry')
@@ -459,8 +461,7 @@ leaflet(options = leafletOptions(minZoom = 4)) %>%
 
 # join lamp_by_county and individual `overall` scores
 lamp_by_county2 <- lamp_by_county %>%
-  st_drop_geometry() %>%
-  rename(County = NAMELSAD)
+  st_drop_geometry()
 
 clean_up <- function(d) {
   return (d %>% 
@@ -511,7 +512,7 @@ d <- d %>%
 ```
 
 ```{r wealth vs award scatter plots}
-#| column: screen
+##| column: screen
 ##| out-width: 80%
 #| out-height: 5in
 #| fig-align: center
@@ -555,4 +556,111 @@ p <- ggplot(d2 %>% select(-c(GEOID, lamp_funded)) %>% ungroup(),
 
 # Convert ggplot object to plotly for interactivity
 ggplotly(p, tooltip = "text") %>% config(displayModeBar = FALSE)
+```
+
+### Urban-Rural continuum data
+
+This information can be used to control for the location of each county in relation to rural (and potentially agricultural) land.
+
+```{r ruc data}
+
+ruc_url <- 'https://www.ers.usda.gov/webdocs/DataFiles/53251/Ruralurbancontinuumcodes2023.xlsx?v=3167.7'
+
+ruc <- read.xlsx(ruc_url)
+
+ruc <- counties %>%
+  merge(ruc,  by.x = 'GEOID', by.y = 'FIPS') %>%
+  mutate(RUCC_2023 = as.factor(RUCC_2023)) %>%
+  st_transform(4326)
+
+ruc_colors <- c('#440154', '#472d7b', '#3b528b', '#2c728e', '#21918c', 
+                  '#28ae80', '#5ec962', '#addc30', '#fde725')
+ruc_pal <- colorFactor(palette = ruc_colors, domain = ruc$RUCC_2023)
+
+labels <- sprintf(
+  "<strong>%s</strong><br/>%s",
+  ruc$NAMELSAD, ruc$Description
+) %>% lapply(htmltools::HTML)
+
+leaflet(ruc) %>%
+  addTiles() %>%
+  addPolygons(
+    fillColor = ~ruc_pal(RUCC_2023),
+    color = 'white',
+    opacity = 1,
+    fillOpacity = 1,
+    weight = 0.2,
+    label = labels,
+    labelOptions = labelOptions(
+      style = list("font-weight" = "normal", padding = "3px 8px"),
+      textsize = "15px",
+      direction = "auto")
+  )
+  
+```
+
+### Dimension reduction
+
+Use principal component analysis (PCA) to reduce dimensionality of datasets and retain only most important information.
+
+```{r pc eh}
+
+pca_prep <- function(d){
+  rownames(d) <- d$GEOID
+  d <- d %>% 
+    st_drop_geometry() %>%
+    drop_na() %>%
+    select(-c(GEOID, County, overall))
+  return(d)
+}
+
+pca_reduce <- function(d){
+  pca_results <- PCA(pca_prep(d), graph = FALSE)
+  pca <- prcomp(pca_prep(d), center = TRUE, scale = TRUE)
+  summary(pca)
+  test_pca <- PCAtoXhat(pca)
+  
+  eig_keepers <- data.frame(pca_results$eig) %>% 
+    filter(eigenvalue >= 1.0)
+  comps <- nrow(eig_keepers)
+  if (comps > 0) {
+    scores <- pca_results$ind$coord %>% as_tibble()
+    df_reduced <- scores[,1:comps]
+    colnames(df_reduced) <- paste(deparse(substitute(d)), colnames(df_reduced), sep = "_")
+    return(data.frame(df_reduced))
+  } else {
+    return(NULL)
+  }
+}
+
+# infrastructure
+infrastructure_pc <- pca_reduce(infrastructure)
+# infrastructure_correlation <- cor(pca_prep(infrastructure), use = "complete.obs")
+# corrplot(correlation, #method = 'square', 
+#             tl.cex = 0.8, 
+#          tl.col = 'black', tl.srt = 45,
+#          type = 'upper', order = "hclust")
+
+food_processors_pc <- pca_reduce(food_processors)
+community_resources_pc <- pca_reduce(community_resources)
+population_pc <- pca_reduce(population)
+financial_pc <- pca_reduce(financial)
+food_insecurity_pc <- pca_reduce(food_insecurity)
+natural_pc <- pca_reduce(natural)
+agriculture_pc <- pca_reduce(agriculture)
+
+all_pcs <- infrastructure_pc %>%
+  merge(food_processors_pc, by = 0) %>%
+  select(-Row.names) %>%
+  merge(community_resources_pc, by = 0) %>%
+  select(-Row.names) %>%
+  merge(population_pc, by = 0) %>%
+  select(-Row.names) %>%
+  merge(financial_pc, by = 0) %>%
+  select(-Row.names) %>%
+  merge(natural_pc, by = 0) %>%
+  select(-Row.names) %>%
+  merge(agriculture_pc, by = 0) %>%
+  select(-Row.names)
+
 ```
