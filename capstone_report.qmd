@@ -214,8 +214,9 @@ pal <- colorFactor(
   palette = grant_colors, domain = d_map_lamp$Grant.Type)
 
 labels <- sprintf(
-  "<strong>%s</strong><br/>%s",
-  d_map_lamp$Organization, scales::dollar(d_map_lamp$Award.Amount)
+  "<strong>%s</strong><br/>Year: %g<br/>Award amount: %s<br/>Grant type: %s<br/>Project type: %s",
+  d_map_lamp$Organization, d_map_lamp$Year, scales::dollar(d_map_lamp$Award.Amount),
+  d_map_lamp$Grant.Type, d_map_lamp$Project.Type
 ) %>% lapply(htmltools::HTML)
 
 my_map %>%
