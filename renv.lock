@@ -291,6 +291,20 @@
       ],
       "Hash": "543776ae6848fde2f48ff3816d0628bc"
     },
+    "biscale": {
+      "Package": "biscale",
+      "Version": "1.0.0",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "R",
+        "classInt",
+        "ggplot2",
+        "stats",
+        "utils"
+      ],
+      "Hash": "43427f94ce2cfcb1cebc5b06dedd0460"
+    },
     "bit": {
       "Package": "bit",
       "Version": "4.0.5",
