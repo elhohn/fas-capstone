@@ -102,6 +102,7 @@ library(bivariatechoropleths)
 library(biscale)
 library(rio)
 library(janitor)
+library(paletteer)
 
 census_api_key(Sys.getenv("CENSUS_API_KEY"))
 ag_census_api_key <- Sys.getenv("AG_CENSUS_API_KEY")
@@ -694,6 +695,71 @@ leaflet(pov_sf) %>%
     opacity = 1
   )
 ```
+
+### Ag land
+
+```{r get ag census farmland data}
+
+# run this to see all of your options for data_item argument
+#View(allDataItem)
+ag_acres <- getQuickstat(
+  key = ag_census_api_key,
+  program = "CENSUS",
+  data_item = "AG LAND, CROPLAND - ACRES",
+  geographic_level = "COUNTY",
+  domain = "TOTAL",
+  year = "2022",
+  state = NULL,
+  geometry = TRUE,
+  lower48 = TRUE)
+  
+ag_acres <- ag_acres %>%
+  mutate(area_meters = st_area(ag_acres),
+         county_acres = area_meters * 0.000247105)
+
+ag_acres$county_acres <- units::set_units(st_area(ag_acres), "acre")
+
+ag_proportion <- ag_acres %>%
+  select(GEOID, Value, county_acres) %>%
+  drop_na() %>%
+  rename(ag_acres = Value) %>%
+  mutate(ag_proportion = ag_acres / county_acres) %>%
+  #st_drop_geometry() %>%
+  select(GEOID, ag_proportion) %>%
+  drop_units() %>%
+  st_transform(4326)
+
+ag_pal <- colorBin(palette = c("#FAE9A0FF", "#DBD797FF", "#BCC68DFF", "#9CB484FF", "#7DA37BFF", "#5E9171FF", "#3F7F68FF", "#1F6E5EFF", "#005C55FF"),#paletteer_d("Redmonder::sPBIYlGn"), 
+                   domain = ag_proportion$ag_proportion,
+                   bins = 9)
+
+labels <- sprintf(
+  "<strong>%s</strong><br/>Percentage in ag: %s percent",
+  ag_proportion$GEOID, round(ag_proportion$ag_proportion*100, 1)
+) %>% lapply(htmltools::HTML)
+
+leaflet(ag_proportion) %>%
+  addTiles() %>%
+  addPolygons(
+    fillColor = ~ag_pal(ag_proportion),
+    color = 'white',
+    opacity = 1,
+    fillOpacity = 1,
+    weight = 0.2,
+    label = labels,
+    labelOptions = labelOptions(
+      style = list("font-weight" = "normal", padding = "3px 8px"),
+      textsize = "15px",
+      direction = "auto")
+  ) %>%
+  addLegend("bottomright", pal = ag_pal, values = ~ag_proportion,
+    title = "% of county in ag",
+    #labFormat = labelFormat(prefix = "$"),
+    opacity = 1
+  )
+```
+
+### 
 
 ### Dimension reduction
 
