@@ -42,4 +42,4 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           AG_CENSUS_API_KEY: ${{ secrets.AG_CENSUS_API_KEY }}
           CENSUS_API_KEY: ${{ secrets.CENSUS_API_KEY }}
-          
+          QUARTO_DENO_EXTRA_OPTIONS: "--v8flags=--max-old-space-size=8192"
