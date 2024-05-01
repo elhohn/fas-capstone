@@ -99,6 +99,7 @@ library(rmarkdown)
 library(plotly)
 library(reshape2)
 library(bivariatechoropleths)
+library(biscale)
 
 census_api_key(Sys.getenv("CENSUS_API_KEY"))
 ag_census_api_key <- Sys.getenv("AG_CENSUS_API_KEY")
@@ -621,18 +622,23 @@ test <- counties %>%
     ) %>%
   st_transform(4326)
 
+bivar_pal <- function(n){
+  return(c('#d3d3d3', '#9e3547', '#4279b0', '#311e3b'))
+}
+
 leaflet() %>%
   addTiles() %>%
   bivariatechoropleths::addBivariateChoropleth(
      map_data = test,
      var1_name = is_rural,
      var2_name = is_underserved,
-     ntiles= 3,
+     ntiles= 2,
      var1_label = "Rural",
      var2_label = "Underserved",
      weight = 1,
-     fillOpacity = 0.7,
+     fillOpacity = 1,
      color = "grey",
+     paletteFunction = bivar_pal, #pals::stevens.pinkblue,
      highlightOptions = leaflet::highlightOptions(color = "orange",
                                                   weight = 2,
                                                   opacity = 1))
