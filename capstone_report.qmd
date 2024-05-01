@@ -723,20 +723,20 @@ ag_proportion <- ag_acres %>%
   select(GEOID, Value, county_acres) %>%
   drop_na() %>%
   rename(ag_acres = Value) %>%
-  mutate(ag_proportion = ag_acres / county_acres) %>%
-  #st_drop_geometry() %>%
+  mutate(ag_proportion = round(ag_acres / county_acres * 100), 0) %>%
   select(GEOID, ag_proportion) %>%
   drop_units() %>%
   st_transform(4326)
 
-ag_pal <- colorBin(palette = c("#FAE9A0FF", "#DBD797FF", "#BCC68DFF", "#9CB484FF", "#7DA37BFF", "#5E9171FF", "#3F7F68FF", "#1F6E5EFF", "#005C55FF"),#paletteer_d("Redmonder::sPBIYlGn"), 
+ag_colors <- as.vector(paletteer_d("Redmonder::sPBIYlGn"))
+ag_pal <- colorBin(palette = ag_colors, 
                    domain = ag_proportion$ag_proportion,
                    bins = 9)
 
 labels <- sprintf(
-  "<strong>%s</strong><br/>Percentage in ag: %s percent",
-  ag_proportion$GEOID, round(ag_proportion$ag_proportion*100, 1)
-) %>% lapply(htmltools::HTML)
+  "<strong>%s</strong><br/>Percentage in ag: %s&#37",
+  ag_proportion$GEOID, ag_proportion$ag_proportion) %>% 
+  lapply(htmltools::HTML)
 
 leaflet(ag_proportion) %>%
   addTiles() %>%
@@ -754,7 +754,7 @@ leaflet(ag_proportion) %>%
   ) %>%
   addLegend("bottomright", pal = ag_pal, values = ~ag_proportion,
     title = "% of county in ag",
-    #labFormat = labelFormat(prefix = "$"),
+    labFormat = labelFormat(suffix = "%"),
     opacity = 1
   )
 ```
