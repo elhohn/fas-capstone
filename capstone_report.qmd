@@ -632,7 +632,7 @@ underserved_data_url <- 'https://files.consumerfinance.gov/f/documents/cfpb_unde
 underserved_data <- read.csv(underserved_data_url)
 underserved_data$FIPS.Code <- sapply(underserved_data$FIPS.Code, add_leading_zero)
 
-test <- counties %>%
+underserved <- counties %>%
   mutate(
     is_rural = as.factor(ifelse(GEOID %in% rural_data$FIPS.Code, 1, 0)),
     is_underserved = as.factor(ifelse(GEOID %in% underserved_data$FIPS.Code, 1, 0))
@@ -647,7 +647,7 @@ my_map %>%
 # leaflet() %>%
 #   addTiles() %>%
   bivariatechoropleths::addBivariateChoropleth(
-     map_data = test,
+     map_data = underserved,
      var1_name = is_rural,
      var2_name = is_underserved,
      ntiles= 2,
@@ -738,7 +738,7 @@ ag_acres <- ag_acres %>%
 
 ag_acres$county_acres <- units::set_units(st_area(ag_acres), "acre")
 
-ag_proportion <- ag_acres %>%
+ag_land <- ag_acres %>%
   select(GEOID, Value, county_acres) %>%
   drop_na() %>%
   rename(ag_acres = Value) %>%
@@ -749,19 +749,19 @@ ag_proportion <- ag_acres %>%
 
 ag_colors <- as.vector(paletteer_d("Redmonder::sPBIYlGn"))
 ag_pal <- colorBin(palette = ag_colors, 
-                   domain = ag_proportion$ag_proportion,
+                   domain = ag_land$ag_proportion,
                    bins = 9)
 
 labels <- sprintf(
   "<strong>%s</strong><br/>Percentage in ag: %s&#37",
-  ag_proportion$GEOID, ag_proportion$ag_proportion) %>% 
+  ag_land$GEOID, ag_land$ag_proportion) %>% 
   lapply(htmltools::HTML)
 
 my_map %>%
 # leaflet(ag_proportion) %>%
 #   addTiles() %>%
   addPolygons(
-    data = ag_proportion,
+    data = ag_land,
     fillColor = ~ag_pal(ag_proportion),
     color = 'white',
     opacity = 1,
@@ -774,13 +774,92 @@ my_map %>%
       direction = "auto")
   ) %>%
   addLegend(
-    data = ag_proportion,
+    data = ag_land,
     "bottomright", pal = ag_pal, values = ~ag_proportion,
     title = "% of county in ag",
     labFormat = labelFormat(suffix = "%"),
     opacity = 1
   )
 ```
+
+## Combine data
+
+```{r}
+
+# start with full list of counties and build from there
+df <- counties %>%
+  select(-NAMELSAD) %>%
+  st_drop_geometry() %>%
+  merge(infrastructure, by = 'GEOID') %>%
+  select(-c(overall, County, geometry)) %>%
+  st_drop_geometry() %>%
+  merge(food_processors, by = 'GEOID') %>%
+  select(-c(overall, County, geometry)) %>%
+  st_drop_geometry() %>%
+  merge(community_resources, by = 'GEOID') %>%
+  select(-c(overall, County, geometry)) %>%
+  st_drop_geometry() %>%
+  merge(population, by = 'GEOID') %>%
+  select(-c(overall, County, geometry)) %>%
+  st_drop_geometry() %>%
+  merge(financial, by = 'GEOID') %>%
+  select(-c(overall, County, geometry)) %>%
+  st_drop_geometry() %>%
+  merge(food_insecurity, by = 'GEOID') %>%
+  select(-c(overall, County, geometry)) %>%
+  st_drop_geometry() %>%
+  merge(natural, by = 'GEOID') %>%
+  select(-c(overall, County, geometry)) %>%
+  st_drop_geometry() %>%
+  merge(agriculture, by = 'GEOID') %>%
+  select(-c(overall, County, geometry)) %>%
+  st_drop_geometry() %>%
+  merge(select(ruc, c(GEOID, RUCC_2023)), by = 'GEOID') %>%
+  select(-geometry) %>%
+  st_drop_geometry() %>%
+  merge(select(underserved, c(GEOID, is_rural, is_underserved)), by = 'GEOID') %>%
+  select(-geometry) %>%
+  st_drop_geometry() %>%
+  merge(pov, by.x = 'GEOID', by.y = 'FIPS') %>%
+  merge(ag_land, by = 'GEOID') %>%
+  select(-geometry) %>%
+  st_drop_geometry()
+```
+
+## Cluster analysis
+
+```{r}
+
+df <- df %>% 
+  column_to_rownames(., var = "GEOID") %>%
+  drop_na()
+df <- sapply(df, as.numeric)
+
+# normalize the data to range of [0, 1]
+df_norm <- apply(df, 2, normalize)
+df_norm <- as.data.frame(df_norm)
+
+result <- NbClust(df_norm, diss = NULL, distance = "euclidean",
+                  min.nc = 3, max.nc = 30, method = "kmeans",
+                  index = "kl")
+
+print(result$All.index)
+# result$Best.nc
+# result$Best.partition
+membership <- result$Best.partition
+
+# add cluster membership vector to data set
+df <- data.frame(df)
+df$cluster <- membership
+
+# add fips code back
+#soc_cap$fips <- fips
+
+# soc_cap <- soc_cap %>%
+#   select(fips, everything())
+```
+
+## Cluster exploration
 
 ### Dimension reduction
 
