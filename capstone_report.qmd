@@ -132,7 +132,9 @@ my_map <- leaflet(options = leafletOptions(minZoom = 4)) %>%
 
 ### Local Agriculture Market Program (LAMP)
 
-According to the USDA-AMS LAMP webpage, the program's main goals are:
+The LAMP program's main goals[^3] are:
+
+[^3]: <https://www.ams.usda.gov/services/grants/lamp>
 
 -   Connect and cultivate regional food economies through public-private partnerships.
 
@@ -144,9 +146,7 @@ According to the USDA-AMS LAMP webpage, the program's main goals are:
 
 -   Simplify the application processes and the reporting processes for the Program.
 
-AFAIK, USDA does not have great data on the nuanced characteristics of the counties receiving funding. This analysis might shed some light on whether or not there is some threshold level of social capital that determines if a county gets funding.
-
-### LAMP data exploration
+The major grant programs within LAMP include the [Local Food Promotion Program (LFPP)](https://www.ams.usda.gov/services/grants/lfpp), [Regional Food Systems Partnership (RFSP)](https://www.ams.usda.gov/services/grants/rfsp), and the [Farmers Market Promotion Program (FMPP)](https://www.ams.usda.gov/services/grants/fmpp).
 
 ```{r load lamp and join data}
 #| output: false
