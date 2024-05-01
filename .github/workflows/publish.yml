@@ -27,7 +27,7 @@ jobs:
         run: |
           eval sudo apt-get install libcurl4-openssl-dev
           eval sudo apt install libudunits2-dev libgdal-dev libgeos-dev libproj-dev libmysqlclient-dev
-          eval export NODE_OPTIONS=--max-old-space-size=4096
+          eval export QUARTO_DENO_EXTRA_OPTIONS="--v8flags=--max-old-space-size=8192"
 
       - name: Install R Dependencies
         uses: r-lib/actions/setup-renv@v2
