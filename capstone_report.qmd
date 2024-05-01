@@ -615,11 +615,6 @@ pca_prep <- function(d){
 }
 
 pca_reduce <- function(d){
-  pca_results <- PCA(pca_prep(d), graph = FALSE)
-  pca <- prcomp(pca_prep(d), center = TRUE, scale = TRUE)
-  summary(pca)
-  test_pca <- PCAtoXhat(pca)
-  
   eig_keepers <- data.frame(pca_results$eig) %>% 
     filter(eigenvalue >= 1.0)
   comps <- nrow(eig_keepers)
