@@ -100,6 +100,8 @@ library(plotly)
 library(reshape2)
 library(bivariatechoropleths)
 library(biscale)
+library(rio)
+library(janitor)
 
 census_api_key(Sys.getenv("CENSUS_API_KEY"))
 ag_census_api_key <- Sys.getenv("AG_CENSUS_API_KEY")
@@ -644,7 +646,54 @@ leaflet() %>%
                                                   opacity = 1))
 ```
 
-### 
+### Poverty
+
+```{r}
+
+pov_url <- 'https://www2.census.gov/programs-surveys/saipe/datasets/2022/2022-state-and-county/est22all.xls'
+
+pov <- rio::import(file = pov_url)
+pov <- tail(pov, -2) %>%
+  row_to_names(row_number = 1)
+
+pov$FIPS <- paste0(pov$`State FIPS Code`, pov$`County FIPS Code`)
+
+pov <- data.frame(pov) %>%
+  filter(County.FIPS.Code != '000') %>%
+  mutate(poverty_rate = as.numeric(Poverty.Percent..All.Ages)) %>%
+  select(FIPS, poverty_rate)
+
+pov_sf <- counties %>%
+  merge(pov, by.x = 'GEOID', by.y = 'FIPS') %>%
+  st_transform(4326)
+
+pov_pal <- colorNumeric(palette = 'magma', domain = pov_sf$poverty_rate, reverse = TRUE)
+
+labels <- sprintf(
+  "<strong>%s</strong><br/>poverty rate: %s percent",
+  pov_sf$NAMELSAD, pov_sf$poverty_rate
+) %>% lapply(htmltools::HTML)
+
+leaflet(pov_sf) %>%
+  addTiles() %>%
+  addPolygons(
+    fillColor = ~pov_pal(poverty_rate),
+    color = 'white',
+    opacity = 1,
+    fillOpacity = 1,
+    weight = 0.2,
+    label = labels,
+    labelOptions = labelOptions(
+      style = list("font-weight" = "normal", padding = "3px 8px"),
+      textsize = "15px",
+      direction = "auto")
+  ) %>%
+  addLegend("bottomright", pal = pov_pal, values = ~poverty_rate,
+    title = "Poverty Rate",
+    #labFormat = labelFormat(prefix = "$"),
+    opacity = 1
+  )
+```
 
 ### Dimension reduction
 
