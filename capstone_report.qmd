@@ -98,6 +98,7 @@ library(shiny)
 library(rmarkdown)
 library(plotly)
 library(reshape2)
+library(bivariatechoropleths)
 
 census_api_key(Sys.getenv("CENSUS_API_KEY"))
 ag_census_api_key <- Sys.getenv("AG_CENSUS_API_KEY")
@@ -598,6 +599,46 @@ leaflet(ruc) %>%
   )
   
 ```
+
+### Underserved communities
+
+From Consumer Financial Bureau data
+
+```{r underserved communities data}
+
+rural_data_url <- 'https://files.consumerfinance.gov/f/documents/cfpb_rural-list_2024.csv'
+rural_data <- read.csv(rural_data_url)
+rural_data$FIPS.Code <- sapply(rural_data$FIPS.Code, add_leading_zero)
+
+underserved_data_url <- 'https://files.consumerfinance.gov/f/documents/cfpb_underserved-list_2024.csv'
+underserved_data <- read.csv(underserved_data_url)
+underserved_data$FIPS.Code <- sapply(underserved_data$FIPS.Code, add_leading_zero)
+
+test <- counties %>%
+  mutate(
+    is_rural = as.factor(ifelse(GEOID %in% rural_data$FIPS.Code, 1, 0)),
+    is_underserved = as.factor(ifelse(GEOID %in% underserved_data$FIPS.Code, 1, 0))
+    ) %>%
+  st_transform(4326)
+
+leaflet() %>%
+  addTiles() %>%
+  bivariatechoropleths::addBivariateChoropleth(
+     map_data = test,
+     var1_name = is_rural,
+     var2_name = is_underserved,
+     ntiles= 3,
+     var1_label = "Rural",
+     var2_label = "Underserved",
+     weight = 1,
+     fillOpacity = 0.7,
+     color = "grey",
+     highlightOptions = leaflet::highlightOptions(color = "orange",
+                                                  weight = 2,
+                                                  opacity = 1))
+```
+
+### 
 
 ### Dimension reduction
 

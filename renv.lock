@@ -315,6 +315,37 @@
       ],
       "Hash": "9fe98599ca456d6552421db0d6772d8f"
     },
+    "bivariatechoropleths": {
+      "Package": "bivariatechoropleths",
+      "Version": "0.1.0",
+      "Source": "GitHub",
+      "RemoteType": "github",
+      "RemoteHost": "api.github.com",
+      "RemoteRepo": "bivariatechoropleths",
+      "RemoteUsername": "chris31415926535",
+      "RemoteRef": "HEAD",
+      "RemoteSha": "9e8dcdff7fd96899cbff8e7f8198fbc27ce94e61",
+      "Requirements": [
+        "R",
+        "colorblindcheck",
+        "cowplot",
+        "dplyr",
+        "ggplot2",
+        "grDevices",
+        "htmltools",
+        "leaflet",
+        "magrittr",
+        "pals",
+        "plotly",
+        "purrr",
+        "rlang",
+        "stringr",
+        "tibble",
+        "tidyr",
+        "tidyselect"
+      ],
+      "Hash": "6315fc36349d907c6ad5a0e0004334e7"
+    },
     "blob": {
       "Package": "blob",
       "Version": "1.2.4",
@@ -590,6 +621,18 @@
       ],
       "Hash": "61e097f35917d342622f21cdc79c256e"
     },
+    "colorblindcheck": {
+      "Package": "colorblindcheck",
+      "Version": "1.0.2",
+      "Source": "Repository",
+      "Repository": "RSPM",
+      "Requirements": [
+        "colorspace",
+        "methods",
+        "spacesXYZ"
+      ],
+      "Hash": "ea5e3a4b7fd2b90a0859256c5f2f3a4e"
+    },
     "colorspace": {
       "Package": "colorspace",
       "Version": "2.1-0",
@@ -773,6 +816,17 @@
         "stats"
       ],
       "Hash": "c7f527c59edc72c4bce63519b8d38752"
+    },
+    "dichromat": {
+      "Package": "dichromat",
+      "Version": "2.0-0.1",
+      "Source": "Repository",
+      "Repository": "RSPM",
+      "Requirements": [
+        "R",
+        "stats"
+      ],
+      "Hash": "16e66f2a483e124af5fc6582d26005f7"
     },
     "diffobj": {
       "Package": "diffobj",
@@ -1746,6 +1800,31 @@
       ],
       "Hash": "7ce2733a9826b3aeb1775d56fd305472"
     },
+    "mapproj": {
+      "Package": "mapproj",
+      "Version": "1.2.11",
+      "Source": "Repository",
+      "Repository": "RSPM",
+      "Requirements": [
+        "R",
+        "graphics",
+        "maps",
+        "stats"
+      ],
+      "Hash": "37090866afbdb09e6437ba0b25c307a2"
+    },
+    "maps": {
+      "Package": "maps",
+      "Version": "3.4.2",
+      "Source": "Repository",
+      "Repository": "RSPM",
+      "Requirements": [
+        "R",
+        "graphics",
+        "utils"
+      ],
+      "Hash": "5f7886e53a3b39d4a110c7bd7fce9164"
+    },
     "memoise": {
       "Package": "memoise",
       "Version": "2.0.1",
@@ -1941,6 +2020,24 @@
         "utils"
       ],
       "Hash": "55ddd2d4a1959535f18393478b0c14a6"
+    },
+    "pals": {
+      "Package": "pals",
+      "Version": "1.8",
+      "Source": "Repository",
+      "Repository": "RSPM",
+      "Requirements": [
+        "R",
+        "colorspace",
+        "dichromat",
+        "grDevices",
+        "graphics",
+        "mapproj",
+        "maps",
+        "methods",
+        "stats"
+      ],
+      "Hash": "ee8ea3d5a65b3c00a2329e9c36115f13"
     },
     "parallelly": {
       "Package": "parallelly",
@@ -2723,6 +2820,16 @@
         "utils"
       ],
       "Hash": "1a0cc0cec2915700e63fd0921085cf6a"
+    },
+    "spacesXYZ": {
+      "Package": "spacesXYZ",
+      "Version": "1.3-0",
+      "Source": "Repository",
+      "Repository": "RSPM",
+      "Requirements": [
+        "R"
+      ],
+      "Hash": "507dc00e31b82a5e3932c175bbd8243c"
     },
     "stringdist": {
       "Package": "stringdist",
