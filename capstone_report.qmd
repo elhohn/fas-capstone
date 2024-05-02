@@ -129,8 +129,7 @@ my_map <- leaflet(options = leafletOptions(minZoom = 4)) %>%
     lng1 = -124.8,
     lat1 = 49.5,
     lng2 = -66.8,
-    lat2 = 24.4) %>%
-  bslib::card(full_screen = TRUE)
+    lat2 = 24.4)
 
 subsetter <- function(topic) {
   d <- comm_wealth_all %>%
@@ -275,7 +274,7 @@ my_map %>%
     data = d_map_lamp,
     radius = ~ point_size,
     color = ~pal(Grant.Type),
-    stroke = FALSE, 
+    stroke = FALSE,
     fillOpacity = 0.5,
     label = labels,
     labelOptions = labelOptions(
@@ -287,7 +286,8 @@ my_map %>%
     data = d_map_lamp, "bottomright", pal = pal, values = ~Grant.Type,
     title = "Grant Type",
     opacity = 1
-  ) 
+  ) %>%
+  bslib::card(full_screen = TRUE)
 ```
 
 ## Community characteristics
@@ -554,7 +554,7 @@ bins <- seq(from = 0, to = 1, by = 0.2)
 pal <- colorBin("YlOrRd", domain = 0:1, bins = bins)
 
 pal_generator <- function(d, pal = 'RdPu') {
-  return(colorQuantile(palette = pal, domain = d$overall, n = 9))
+  return(colorQuantile(palette = pal, domain = d$overall, n = 6, na.color = 'grey75'))
 }
 
 my_map %>%
@@ -563,7 +563,9 @@ my_map %>%
     weight = 0.5,
     color = 'white',
     fillOpacity = 1,
-    fillColor = pal_generator(natural)(natural$overall),
+    fillColor = pal_generator(
+      natural, 
+      as.vector(paletteer_d("MetBrewer::Hokusai2")))(natural$overall),
     group = "Natural_Resources",
     ) %>%
   addPolygons(
@@ -571,28 +573,40 @@ my_map %>%
     weight = 0.5,
     color = 'white',
     fillOpacity = 1,
-    fillColor = pal_generator(agriculture)(agriculture$overall),
+    fillColor = pal_generator(
+      agriculture,
+      as.vector(paletteer_d("MetBrewer::VanGogh3"))
+      )(agriculture$overall),
     group = "Agricultural_Resources") %>%
   addPolygons(
     data = financial,
     weight = 0.5,
     color = 'white',
     fillOpacity = 1,
-    fillColor = pal_generator(financial)(financial$overall),
+    fillColor = pal_generator(
+      financial,
+      as.vector(paletteer_d("MetBrewer::OKeeffe2"))
+    )(financial$overall),
     group = "Financial_Resources") %>%
   addPolygons(
     data = community_resources,
     weight = 0.5,
     color = 'white',
     fillOpacity = 1,
-    fillColor = pal_generator(community_resources)(community_resources$overall),
+    fillColor = pal_generator(
+      community_resources,
+      'YlGnBu'
+      )(community_resources$overall),
     group = "Community_Resources") %>%
   addPolygons(
     data = infrastructure,
     weight = 0.5,
     color = 'white',
     fillOpacity = 1,
-    fillColor = pal_generator(infrastructure)(infrastructure$overall),
+    fillColor = pal_generator(
+      infrastructure,
+      as.vector(paletteer_d("Redmonder::sPBIRdPu"))
+      )(infrastructure$overall),
     group = "Infrastructure") %>%
   addPolygons(
     data = food_insecurity,
@@ -600,24 +614,32 @@ my_map %>%
     color = 'white',
     fillOpacity = 1,
     fillColor = pal_generator(food_insecurity)(food_insecurity$overall),
-    group = "Food_Insecurity") %>%
+    group = "Food_Security") %>%
   addPolygons(
     data = population,
     weight = 0.5,
     color = 'white',
     fillOpacity = 1,
-    fillColor = pal_generator(population)(population$overall),
+    fillColor = pal_generator(
+      population,
+      as.vector('YlOrBr')
+      )(population$overall),
     group = "Population") %>%
   addPolygons(
     data = food_processors,
     weight = 0.5,
     color = 'white',
     fillOpacity = 1,
-    fillColor = pal_generator(food_processors)(food_processors$overall),
+    fillColor = pal_generator(
+      food_processors,
+      as.vector(paletteer_d("Redmonder::sPBIYlGn"))
+      )(food_processors$overall),
     group = "Food_Processors") %>%
   addLegend(
     "bottomright",
-    pal = pal_generator(natural),
+    pal = pal_generator(
+      natural, 
+      as.vector(paletteer_d("MetBrewer::Hokusai2"))),
     opacity = 1,
     values = natural$overall,
     title = HTML('Natural Resources<br>Index Score'),
@@ -626,7 +648,9 @@ my_map %>%
   ) %>%
   addLegend(
     "bottomright",
-    pal = pal_generator(agriculture),
+    pal = pal_generator(
+      agriculture, 
+      as.vector(paletteer_d("MetBrewer::VanGogh3"))),
     opacity = 1,
     values = agriculture$overall,
     title = HTML('Agricultural Resources<br>Index Score'),
@@ -634,7 +658,10 @@ my_map %>%
     className = 'info legend Agricultural_Resources') %>%
   addLegend(
     "bottomright",
-    pal = pal_generator(financial),
+    pal = pal_generator(
+      financial,
+      as.vector(paletteer_d("MetBrewer::OKeeffe2"))
+      ),
     opacity = 1,
     values = financial$overall,
     title = HTML('Financial Resources<br>Index Score'),
@@ -643,7 +670,10 @@ my_map %>%
     ) %>%
   addLegend(
     "bottomright",
-    pal = pal_generator(community_resources),
+    pal = pal_generator(
+      community_resources,
+      'YlGnBu'
+      ),
     opacity = 1,
     values = community_resources$overall,
     title = HTML('Commnunity Resources<br>Index Score'),
@@ -651,7 +681,10 @@ my_map %>%
     className = 'info legend Community_Resources') %>%
   addLegend(
     "bottomright",
-    pal = pal_generator(food_processors),
+    pal = pal_generator(
+      food_processors,
+      as.vector(paletteer_d("Redmonder::sPBIYlGn"))
+      ),
     opacity = 1,
     values = food_processors$overall,
     title = HTML('Food Processors<br>Index Score'),
@@ -659,7 +692,10 @@ my_map %>%
     className = "info legend Food_Processors") %>%
   addLegend(
     "bottomright",
-    pal = pal_generator(infrastructure),
+    pal = pal_generator(
+      infrastructure,
+      as.vector(paletteer_d("Redmonder::sPBIRdPu"))
+    ),
     opacity = 1,
     values = infrastructure$overall,
     title = HTML('Infrastructure<br>Index Score'),
@@ -670,12 +706,14 @@ my_map %>%
     pal = pal_generator(food_insecurity),
     opacity = 1,
     values = food_insecurity$overall,
-    title = HTML('Food Insecurity<br>Index Score'),
-    group = "Food_Insecurity",
-    className = "info legend Food_Insecurity") %>%
+    title = HTML('Food Security<br>Index Score'),
+    group = "Food_Security",
+    className = "info legend Food_Security") %>%
   addLegend(
     "bottomright",
-    pal = pal_generator(population),
+    pal = pal_generator(
+      population, "YlOrBr"
+      ),
     opacity = 1,
     values = population$overall,
     title = HTML('Population<br>Index Score'),
@@ -683,14 +721,14 @@ my_map %>%
     className = "info legend Population") %>%
   addLayersControl(
     baseGroups = c(
+      "Agricultural_Resources",
       "Infrastructure",
-      "Food_Insecurity",
+      "Food_Security",
       "Population",
       "Food_Processors",
       "Community_Resources",
       "Financial_Resources",
-      "Natural_Resources",
-      "Agricultural_Resources"
+      "Natural_Resources"
     ),
     options = layersControlOptions(collapsed = TRUE)
   ) %>%
@@ -708,7 +746,8 @@ my_map %>%
            updateLegend();
            this.on('baselayerchange', el => updateLegend());
         }"
-    )
+    ) %>%
+  bslib::card(full_screen = TRUE)
 ```
 
 ### Plot of wealth indices vs Award Amounts
