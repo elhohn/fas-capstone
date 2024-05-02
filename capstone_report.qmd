@@ -132,7 +132,7 @@ my_map <- leaflet(options = leafletOptions(minZoom = 4)) %>%
     lat2 = 24.4)
 
 subsetter <- function(topic) {
-  d <- comm_wealth %>%
+  d <- comm_wealth_all %>%
     filter(topic_area == topic) %>%
     select(fips, year, variable_name, value) %>%
     group_by(fips, variable_name) %>%
@@ -304,14 +304,11 @@ Participation in grant programs supporting investment in local food systems, suc
 
 This report will assess the relationship of each of these community characteristics to the distribution of LAMP grants across the US.
 
-### Indicators of community wealth
+```{r combine all data for PCA}
 
-#### Community characteristics
-
-```{r community wealth data prep}
-
+## Community Wealth
 comm_wealth_url <- 'https://raw.githubusercontent.com/CSU-Local-and-Regional-Food-Systems/USDA-AMS-Data-and-Metrics/main/Indicators%20of%20Community%20Wealth/community_wealth.csv'
-comm_wealth <- read.csv(comm_wealth_url) %>%
+comm_wealth_all <- read.csv(comm_wealth_url) %>%
   filter(fips > 100) # remove national level rows
 
 # Function to add leading 0 to 4-digit fips values in comm_wealth to facilitate later joins
@@ -321,8 +318,125 @@ add_leading_zero <- function(x) {
 }
 
 # apply funcion to fips column
-comm_wealth$fips <- sapply(comm_wealth$fips, add_leading_zero)
+comm_wealth_all$fips <- sapply(comm_wealth_all$fips, add_leading_zero)
+
+comm_wealth <- comm_wealth_all %>%
+  select(fips, year, variable_name, value) %>%
+  group_by(fips, variable_name) %>%
+  summarise(value = mean(value, na.rm = TRUE)) %>%
+  ungroup() %>%
+  pivot_wider(names_from = variable_name, values_from = value) %>%
+  select(-broad_11)
+
+## Urban-rural continuum
+ruc_url <- 'https://www.ers.usda.gov/webdocs/DataFiles/53251/Ruralurbancontinuumcodes2023.xlsx?v=3167.7'
+ruc <- read.xlsx(ruc_url) %>%
+  select(FIPS, RUCC_2023) %>%
+  mutate(RUCC_2023 = as.factor(RUCC_2023)) %>%
+  rename(fips = FIPS)
+
+## Rural and Underserved designation
+rural_data_url <- 'https://files.consumerfinance.gov/f/documents/cfpb_rural-list_2024.csv'
+rural_data <- read.csv(rural_data_url)
+rural_data$FIPS.Code <- sapply(rural_data$FIPS.Code, add_leading_zero)
+underserved_data_url <- 'https://files.consumerfinance.gov/f/documents/cfpb_underserved-list_2024.csv'
+underserved_data <- read.csv(underserved_data_url)
+underserved_data$FIPS.Code <- sapply(underserved_data$FIPS.Code, add_leading_zero)
+underserved <- counties %>%
+  st_drop_geometry() %>%
+  mutate(
+    is_rural = as.factor(ifelse(GEOID %in% rural_data$FIPS.Code, 1, 0)),
+    is_underserved = as.factor(ifelse(GEOID %in% underserved_data$FIPS.Code, 1, 0))
+    ) %>%
+  select(-county_name) %>%
+  rename(fips = GEOID)
+
+## Poverty
+pov_url <- 'https://www2.census.gov/programs-surveys/saipe/datasets/2022/2022-state-and-county/est22all.xls'
+pov <- rio::import(file = pov_url)
+pov <- tail(pov, -2) %>%
+  row_to_names(row_number = 1)
+pov$FIPS <- paste0(pov$`State FIPS Code`, pov$`County FIPS Code`)
+pov <- data.frame(pov) %>%
+  filter(County.FIPS.Code != '000') %>%
+  mutate(poverty_rate = as.numeric(Poverty.Percent..All.Ages)) %>%
+  select(FIPS, poverty_rate) %>%
+  rename(fips = FIPS)
+
+## Ag proportion
+ag_acres <- getQuickstat(
+  key = ag_census_api_key,
+  program = "CENSUS",
+  data_item = "AG LAND, CROPLAND - ACRES",
+  geographic_level = "COUNTY",
+  domain = "TOTAL",
+  year = "2022",
+  geometry = TRUE,
+  lower48 = TRUE)
+
+ag_acres <- ag_acres %>%
+  mutate(area_meters = st_area(ag_acres),
+         county_acres = area_meters * 0.000247105)
+
+ag_acres$county_acres <- units::set_units(st_area(ag_acres), "acre")
+
+ag_land <- ag_acres %>%
+  select(GEOID, Value, county_acres) %>%
+  drop_na() %>%
+  rename(ag_acres = Value) %>%
+  mutate(ag_proportion = round(ag_acres / county_acres * 100), 0) %>%
+  select(GEOID, ag_proportion) %>%
+  drop_units() %>%
+  st_drop_geometry() %>%
+  rename(fips = GEOID)
+
+d <- comm_wealth %>%
+  merge(ruc, by = 'fips') %>%
+  merge(underserved, by = 'fips') %>%
+  merge(pov, by = 'fips') %>%
+  merge(ag_land, by = 'fips')
+
+rownames(d) <- d$fips
+
+d_factors <- d %>%
+  select_if(is.factor)
+
+d <- d %>% 
+  select(-fips) %>% 
+  select_if(is.numeric)
+
+for(i in 1:ncol(d)){
+  d[is.na(d[,i]), i] <- mean(d[,i], na.rm = TRUE)
+}
+
+## PCA v1
+d_normalized <- scale(d)
+cov_matrix <- cov(d_normalized)
+eigen_result <- eigen(cov_matrix)
+eigen_result$vectors <- eigen_result$vectors[, order(eigen_result$values, decreasing = TRUE)]
+transformed_data <- d_normalized %*% eigen_result$vectors
+
+# Select the first k eigenvectors 
+eigen_vals <- eigen_result$values
+k <- length(eigen_vals[eigen_vals >= 1])
+transformed_data_k <- transformed_data[, 1:k]
+
+
+## PCA v2
+res.pca <- prcomp(d, scale = TRUE)
+eigenvectors <- res.pca$rotation
+
+## PCA v3
+res.pca3 <- princomp(d_normalized)
+#eigenvectors3 <- loadings(res.pca3)
+
 ```
+
+### Indicators of community wealth
+
+Started with 44 variables, which were reduced to \_\_ using a principal components analysis.
+
+#### Community characteristics
 
 ##### Infrastructure
 
@@ -333,9 +447,10 @@ comm_wealth$fips <- sapply(comm_wealth$fips, add_leading_zero)
 ```{r infrastructure}
 #| fig-align: center
 #| fig-width: 10
-#| fig-height: 5
+#| fig-height: 3
 
-infrastructure <- subsetter("Infrastructure")
+infrastructure <- subsetter("Infrastructure") %>%
+  select(-broad_11)
 infrastructure <- pca_prep(infrastructure)
 
 correlation <- cor(infrastructure, use = "complete.obs")
@@ -351,7 +466,7 @@ h <- infrastructure %>%
   mutate(value = round(value, 2)) %>%
   ggplot(aes(value)) + 
   geom_histogram(
-    linewidth = 0.8,
+    linewidth = 0.6,
     boundary = 0.5,
     bins = 8,
     color = '#2F414BFF',
@@ -361,13 +476,11 @@ h <- infrastructure %>%
     ~variable, 
     scales = 'free_x',
     ncol = 5
-    #shrink = FALSE,
-    
     ) +
   theme_minimal() +
   theme(
     strip.background =element_rect(fill="#2F414BFF"),
-    strip.text = element_text(colour = 'grey76'),
+    strip.text = element_text(color = 'grey76', face = 'bold'),
     axis.title.x = element_blank(),
     axis.title.y = element_blank()
     ) +
@@ -377,26 +490,7 @@ h <- infrastructure %>%
     xlab = ''
   )
 
-#ggarrange(c, h, ncol = 1, nrow = 2)
-ggplotly(h) %>% config(displayModeBar = FALSE)
-
-#pca_results <- PCA(pca_prep(d), graph = FALSE)
-pca_results <- prcomp(infrastructure, scale = TRUE)
-
-
-# eig_keepers <- data.frame(pca_results$eig) %>%
-#     filter(eigenvalue >= 1.0)
-#   comps <- nrow(eig_keepers)
-#   if (comps > 0) {
-#     scores <- pca_results$var$coord %>% as_tibble()
-#     df_reduced <- scores[,1:comps]
-#     colnames(df_reduced) <- paste(deparse(substitute(d)), colnames(df_reduced), sep = "_")
-#     return(data.frame(df_reduced))
-#   } else {
-#     return(NULL)
-#   }
-
-
+h
 ```
 
 ##### Community resources
@@ -408,12 +502,6 @@ pca_results <- prcomp(infrastructure, scale = TRUE)
 ##### Natural
 
 ##### Agriculture
-
-#### Processing and distribution
-
-#### Food access
-
-## Community Characteristics" "Processing & Distribution" "Food Access"
 
 ```{r wealth data subset}
 #| warnings: false
