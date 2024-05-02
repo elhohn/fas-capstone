@@ -129,7 +129,8 @@ my_map <- leaflet(options = leafletOptions(minZoom = 4)) %>%
     lng1 = -124.8,
     lat1 = 49.5,
     lng2 = -66.8,
-    lat2 = 24.4)
+    lat2 = 24.4) %>%
+  bslib::card(full_screen = TRUE)
 
 subsetter <- function(topic) {
   d <- comm_wealth_all %>%
@@ -286,8 +287,7 @@ my_map %>%
     data = d_map_lamp, "bottomright", pal = pal, values = ~Grant.Type,
     title = "Grant Type",
     opacity = 1
-  ) %>%
-  bslib::card(full_screen = TRUE)
+  ) 
 ```
 
 ## Community characteristics
