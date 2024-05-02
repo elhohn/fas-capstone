@@ -640,6 +640,43 @@ pov_sf <- counties %>%
   st_transform(4326)
 ```
 
+```{r ag proportion data grab}
+
+## Ag proportion
+ag_acres <- getQuickstat(
+  key = ag_census_api_key,
+  program = "CENSUS",
+  data_item = "AG LAND, CROPLAND - ACRES",
+  geographic_level = "COUNTY",
+  domain = "TOTAL",
+  year = "2022",
+  geometry = TRUE,
+  lower48 = TRUE)
+
+ag_acres <- ag_acres %>%
+  mutate(area_meters = st_area(ag_acres),
+         county_acres = area_meters * 0.000247105)
+
+ag_acres$county_acres <- units::set_units(st_area(ag_acres), "acre")
+
+ag_land <- ag_acres %>%
+  select(GEOID, NAMELSAD, Value, county_acres) %>%
+  drop_na() %>%
+  rename(
+    ag_acres = Value,
+    county_name = NAMELSAD,
+    fips = GEOID
+    ) %>%
+  mutate(ag_proportion = round(ag_acres / county_acres * 100), 1) %>%
+  select(fips, ag_proportion) %>%
+  drop_units() %>%
+  st_drop_geometry() # geoms are wonky from the original soure
+  
+ag_land_sf <- counties %>%
+  merge(ag_land, by = 'fips') %>%
+  st_transform(4326)
+```
+
 ##### Exploratory map of additional explanatory variables
 
 ```{r ruc and ag land map}
@@ -658,10 +695,15 @@ pov_pal <- colorNumeric(
   reverse = TRUE
   )
 
-labels <- sprintf(
-  "<strong>%s</strong><br/>%s",
-  ruc_sf$county_name, ruc_sf$Description
-) %>% lapply(htmltools::HTML)
+ag_pal <- colorNumeric(
+  palette= as.vector(paletteer_d("Redmonder::sPBIYlGn")), 
+  domain = ag_land_sf$ag_proportion
+  )
+
+# labels <- sprintf(
+#   "<strong>%s</strong><br/>%s",
+#   ruc_sf$county_name, ruc_sf$Description
+# ) %>% lapply(htmltools::HTML)
 
 my_map %>%
   addPolygons(
@@ -674,7 +716,7 @@ my_map %>%
     group = 'RUC',
     popup = glue(
       "<b>{ruc_sf$county_name}</b><br/>",
-      "<b>RUC class: </b> {ruc_sf$Description}") %>%
+      "RUC class: {ruc_sf$Description}") %>%
       lapply(htmltools::HTML)
   ) %>%
   addPolygons(
@@ -687,7 +729,7 @@ my_map %>%
     group = 'Underserved',
     popup = glue(
       "<b>{underserved_sf$county_name}</b><br/>",
-      "<b>Underserved: </b> {underserved_sf$is_underserved}") %>%
+      "Underserved: {underserved_sf$is_underserved}") %>%
       lapply(htmltools::HTML)
   ) %>%
   addPolygons(
@@ -700,7 +742,20 @@ my_map %>%
     group = 'Poverty',
     popup = glue(
       "<b>{pov_sf$county_name}</b><br/>",
-      "<b>Poverty Rate: </b> {pov_sf$poverty_rate}") %>%
+      "Poverty Rate: {pov_sf$poverty_rate}&#37;") %>%
+      lapply(htmltools::HTML)
+  ) %>%
+  addPolygons(
+    data = ag_land_sf,
+    fillColor = ~ag_pal(ag_proportion),
+    color = 'white',
+    opacity = 1,
+    fillOpacity = 1,
+    weight = 0.2,
+    group = 'Ag_Proportion',
+    popup = glue(
+      "<b>{ag_land_sf$county_name}</b><br/>",
+      "Ag Proportion: {ag_land_sf$ag_proportion}&#37;") %>%
       lapply(htmltools::HTML)
   ) %>%
   addLegend(
@@ -730,15 +785,29 @@ my_map %>%
     values = pov_sf$poverty_rate,
     pal = pov_pal,
     #labels = c('Not Undereserved', "Underserved"),
-    title = HTML('Povety Rate'),
+    title = HTML('Poverty Rate'),
     group = "Poverty",
     className = "info legend Poverty"
+    ) %>%
+  addLegend(
+    "bottomright",
+    opacity = 1,
+    values = ag_land_sf$ag_proportion,
+    pal = ag_pal,
+    #labels = c('Not Undereserved', "Underserved"),
+    title = HTML('Land in Ag'),
+    group = "Ag_Proportion",
+    className = "info legend Ag_Proportion",
+    labFormat = labelFormat(
+      suffix = "%"
+    )
     ) %>%
   addLayersControl(
     baseGroups = c(
       "Poverty",
       "RUC",
-      "Underserved"
+      "Underserved",
+      "Ag_Proportion"
     ),
     options = layersControlOptions(collapsed = TRUE)
   ) %>%
@@ -770,37 +839,6 @@ comm_wealth <- comm_wealth_all %>%
   ungroup() %>%
   pivot_wider(names_from = variable_name, values_from = value) %>%
   select(-broad_11)
-
-
-
-
-
-## Ag proportion
-ag_acres <- getQuickstat(
-  key = ag_census_api_key,
-  program = "CENSUS",
-  data_item = "AG LAND, CROPLAND - ACRES",
-  geographic_level = "COUNTY",
-  domain = "TOTAL",
-  year = "2022",
-  geometry = TRUE,
-  lower48 = TRUE)
-
-ag_acres <- ag_acres %>%
-  mutate(area_meters = st_area(ag_acres),
-         county_acres = area_meters * 0.000247105)
-
-ag_acres$county_acres <- units::set_units(st_area(ag_acres), "acre")
-
-ag_land <- ag_acres %>%
-  select(GEOID, Value, county_acres) %>%
-  drop_na() %>%
-  rename(ag_acres = Value) %>%
-  mutate(ag_proportion = round(ag_acres / county_acres * 100), 0) %>%
-  select(GEOID, ag_proportion) %>%
-  drop_units() %>%
-  st_drop_geometry() %>%
-  rename(fips = GEOID)
 
 d <- comm_wealth %>%
   merge(ruc, by = 'fips') %>%
