@@ -580,9 +580,9 @@ my_map %>%
   bslib::card(full_screen = TRUE)
 ```
 
-#### Rural vs. urban, and proximity to farmland
+#### Additional explanatory variables
 
-##### Exploratory map of rural-urban continuum classification, and proportion of county in agriculture
+##### Rural-Urban Continuum Classification
 
 ```{r ruc data grab}
 
@@ -598,8 +598,30 @@ ruc_sf <- counties %>%
   merge(ruc, by = 'fips') %>%
   mutate(RUCC_2023 = as.factor(RUCC_2023)) %>%
   st_transform(4326)
-
 ```
+
+```{r rural and underserved data grab}
+
+## Rural and Underserved designation
+rural_data_url <- 'https://files.consumerfinance.gov/f/documents/cfpb_rural-list_2024.csv'
+rural_data <- read.csv(rural_data_url)
+rural_data$FIPS.Code <- sapply(rural_data$FIPS.Code, add_leading_zero)
+underserved_data_url <- 'https://files.consumerfinance.gov/f/documents/cfpb_underserved-list_2024.csv'
+underserved_data <- read.csv(underserved_data_url)
+underserved_data$FIPS.Code <- sapply(underserved_data$FIPS.Code, add_leading_zero)
+underserved_sf <- counties %>%
+  mutate(
+    is_rural = as.factor(ifelse(fips %in% rural_data$FIPS.Code, 1, 0)),
+    is_underserved = as.factor(ifelse(fips %in% underserved_data$FIPS.Code, 1, 0))
+    ) %>%
+  #select(-county_name) %>%
+  st_transform(4326)
+
+underserved <- underserved_sf %>%
+  st_drop_geometry()
+```
+
+##### Exploratory map of additional explanatory variables
 
 ```{r ruc and ag land map}
 
@@ -607,14 +629,16 @@ ruc_pal <- colorFactor(
   palette = as.vector(paletteer_d("MoMAColors::Picabia"))[1:9], 
   domain = ruc_sf$RUCC_2023)
 
+underserved_pal <- colorFactor(
+  palette= c('#BFC8D3FF', "#E63833FF"), 
+  domain = underserved$is_underserved)
+
 labels <- sprintf(
   "<strong>%s</strong><br/>%s",
   ruc_sf$county_name, ruc_sf$Description
 ) %>% lapply(htmltools::HTML)
 
 my_map %>%
-# leaflet(ruc) %>%
-#   addTiles() %>%
   addPolygons(
     data = ruc_sf,
     fillColor = ~ruc_pal(RUCC_2023),
@@ -622,11 +646,24 @@ my_map %>%
     opacity = 1,
     fillOpacity = 1,
     weight = 0.2,
-    label = labels,
-    labelOptions = labelOptions(
-      style = list("font-weight" = "normal", padding = "3px 8px"),
-      textsize = "15px",
-      direction = "auto")
+    group = 'RUC',
+    popup = glue(
+      "<b>{ruc_sf$county_name}</b><br/>",
+      "<b>RUC class: </b> {ruc_sf$Description}") %>%
+      lapply(htmltools::HTML)
+  ) %>%
+  addPolygons(
+    data = underserved_sf,
+    fillColor = ~underserved_pal(is_underserved),
+    color = 'white',
+    opacity = 1,
+    fillOpacity = 1,
+    weight = 0.2,
+    group = 'Underserved',
+    popup = glue(
+      "<b>{underserved_sf$county_name}</b><br/>",
+      "<b>Underserved: </b> {underserved_sf$is_underserved}") %>%
+      lapply(htmltools::HTML)
   ) %>%
   addLegend(
     "bottomright",
@@ -637,7 +674,41 @@ my_map %>%
     labels = c('Most Urban',"","","","","","","","Most Rural"),
     title = HTML('Rural-Urban<br>Continuum Class'),
     group = "RUC",
-    className = "info legend RUC")
+    className = "info legend RUC"
+    ) %>%
+  addLegend(
+    "bottomright",
+    opacity = 1,
+    values = ruc_sf$RUCC_2023,
+    colors = c('#BFC8D3FF', "#E63833FF"),
+    labels = c('Not Undereserved', "Underserved"),
+    title = HTML('Classification'),
+    group = "Underserved",
+    className = "info legend Underserved"
+    ) %>%
+  addLayersControl(
+    baseGroups = c(
+      "RUC",
+      "Underserved"
+    ),
+    options = layersControlOptions(collapsed = TRUE)
+  ) %>%
+  htmlwidgets::onRender(
+      "
+        function(el, x) {
+           var updateLegend = function () {
+              var selectedGroup = document.querySelectorAll('input:checked')[0].nextSibling.innerText.substr(1);
+
+              document.querySelectorAll('.legend').forEach(a => a.hidden=true);
+              document.querySelectorAll('.legend').forEach(l => {
+                 if (l.classList.contains(selectedGroup)) l.hidden=false;
+              });
+           };
+           updateLegend();
+           this.on('baselayerchange', el => updateLegend());
+        }"
+    ) %>%
+  bslib::card(full_screen = TRUE)
 
 ```
 
@@ -651,28 +722,7 @@ comm_wealth <- comm_wealth_all %>%
   pivot_wider(names_from = variable_name, values_from = value) %>%
   select(-broad_11)
 
-# ## Urban-rural continuum
-# ruc_url <- 'https://www.ers.usda.gov/webdocs/DataFiles/53251/Ruralurbancontinuumcodes2023.xlsx?v=3167.7'
-# ruc <- read.xlsx(ruc_url) %>%
-#   select(FIPS, RUCC_2023) %>%
-#   mutate(RUCC_2023 = as.factor(RUCC_2023)) %>%
-#   rename(fips = FIPS)
 
-## Rural and Underserved designation
-rural_data_url <- 'https://files.consumerfinance.gov/f/documents/cfpb_rural-list_2024.csv'
-rural_data <- read.csv(rural_data_url)
-rural_data$FIPS.Code <- sapply(rural_data$FIPS.Code, add_leading_zero)
-underserved_data_url <- 'https://files.consumerfinance.gov/f/documents/cfpb_underserved-list_2024.csv'
-underserved_data <- read.csv(underserved_data_url)
-underserved_data$FIPS.Code <- sapply(underserved_data$FIPS.Code, add_leading_zero)
-underserved <- counties %>%
-  st_drop_geometry() %>%
-  mutate(
-    is_rural = as.factor(ifelse(GEOID %in% rural_data$FIPS.Code, 1, 0)),
-    is_underserved = as.factor(ifelse(GEOID %in% underserved_data$FIPS.Code, 1, 0))
-    ) %>%
-  select(-county_name) %>%
-  rename(fips = GEOID)
 
 ## Poverty
 pov_url <- 'https://www2.census.gov/programs-surveys/saipe/datasets/2022/2022-state-and-county/est22all.xls'
