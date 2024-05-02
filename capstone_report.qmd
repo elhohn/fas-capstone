@@ -127,10 +127,10 @@ my_map <- leaflet(options = leafletOptions(minZoom = 4)) %>%
   #addTiles() %>%
   addProviderTiles(providers$CartoDB.Positron) %>%
   setMaxBounds(
-    lng1 = -124.8,
-    lat1 = 49.5,
-    lng2 = -66.8,
-    lat2 = 24.4)
+    lng1 = -127.8,
+    lat1 = 52.5,
+    lng2 = -63.8,
+    lat2 = 21.4)
 
 subsetter <- function(topic) {
   d <- comm_wealth_all %>%
@@ -621,17 +621,42 @@ underserved <- underserved_sf %>%
   st_drop_geometry()
 ```
 
+```{r poverty data grab}
+
+## Poverty
+pov_url <- 'https://www2.census.gov/programs-surveys/saipe/datasets/2022/2022-state-and-county/est22all.xls'
+pov <- rio::import(file = pov_url)
+pov <- tail(pov, -2) %>%
+  row_to_names(row_number = 1)
+pov$FIPS <- paste0(pov$`State FIPS Code`, pov$`County FIPS Code`)
+pov <- data.frame(pov) %>%
+  filter(County.FIPS.Code != '000') %>%
+  mutate(poverty_rate = as.numeric(Poverty.Percent..All.Ages)) %>%
+  select(FIPS, poverty_rate) %>%
+  rename(fips = FIPS)
+
+pov_sf <- counties %>%
+  merge(pov, by = 'fips') %>%
+  st_transform(4326)
+```
+
 ##### Exploratory map of additional explanatory variables
 
 ```{r ruc and ag land map}
 
 ruc_pal <- colorFactor(
-  palette = as.vector(paletteer_d("MoMAColors::Picabia"))[1:9], 
+  palette = as.vector(paletteer_d("trekcolors::tholian"))[1:9], 
   domain = ruc_sf$RUCC_2023)
 
 underserved_pal <- colorFactor(
-  palette= c('#BFC8D3FF', "#E63833FF"), 
+  palette= c('#F2EBBBFF', "#09283CFF"), 
   domain = underserved$is_underserved)
+
+pov_pal <- colorNumeric(
+  palette= as.vector(paletteer_d("MexBrewer::Revolucion")), 
+  domain = pov_sf$poverty_rate,
+  reverse = TRUE
+  )
 
 labels <- sprintf(
   "<strong>%s</strong><br/>%s",
@@ -665,12 +690,25 @@ my_map %>%
       "<b>Underserved: </b> {underserved_sf$is_underserved}") %>%
       lapply(htmltools::HTML)
   ) %>%
+  addPolygons(
+    data = pov_sf,
+    fillColor = ~pov_pal(poverty_rate),
+    color = 'white',
+    opacity = 1,
+    fillOpacity = 1,
+    weight = 0.2,
+    group = 'Poverty',
+    popup = glue(
+      "<b>{pov_sf$county_name}</b><br/>",
+      "<b>Poverty Rate: </b> {pov_sf$poverty_rate}") %>%
+      lapply(htmltools::HTML)
+  ) %>%
   addLegend(
     "bottomright",
     #pal = ruc_pal,
     opacity = 1,
     values = ruc_sf$RUCC_2023,
-    colors = as.vector(paletteer_d("MoMAColors::Picabia"))[1:9],
+    colors = as.vector(paletteer_d("trekcolors::tholian"))[1:9],
     labels = c('Most Urban',"","","","","","","","Most Rural"),
     title = HTML('Rural-Urban<br>Continuum Class'),
     group = "RUC",
@@ -680,14 +718,25 @@ my_map %>%
     "bottomright",
     opacity = 1,
     values = ruc_sf$RUCC_2023,
-    colors = c('#BFC8D3FF', "#E63833FF"),
+    colors = c('#F2EBBBFF', "#09283CFF"),
     labels = c('Not Undereserved', "Underserved"),
     title = HTML('Classification'),
     group = "Underserved",
     className = "info legend Underserved"
     ) %>%
+  addLegend(
+    "bottomright",
+    opacity = 1,
+    values = pov_sf$poverty_rate,
+    pal = pov_pal,
+    #labels = c('Not Undereserved', "Underserved"),
+    title = HTML('Povety Rate'),
+    group = "Poverty",
+    className = "info legend Poverty"
+    ) %>%
   addLayersControl(
     baseGroups = c(
+      "Poverty",
       "RUC",
       "Underserved"
     ),
@@ -724,17 +773,7 @@ comm_wealth <- comm_wealth_all %>%
 
 
 
-## Poverty
-pov_url <- 'https://www2.census.gov/programs-surveys/saipe/datasets/2022/2022-state-and-county/est22all.xls'
-pov <- rio::import(file = pov_url)
-pov <- tail(pov, -2) %>%
-  row_to_names(row_number = 1)
-pov$FIPS <- paste0(pov$`State FIPS Code`, pov$`County FIPS Code`)
-pov <- data.frame(pov) %>%
-  filter(County.FIPS.Code != '000') %>%
-  mutate(poverty_rate = as.numeric(Poverty.Percent..All.Ages)) %>%
-  select(FIPS, poverty_rate) %>%
-  rename(fips = FIPS)
+
 
 ## Ag proportion
 ag_acres <- getQuickstat(
