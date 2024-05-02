@@ -106,6 +106,7 @@ library(paletteer)
 library(scales)
 library(ggpubr)
 library(ggcorrplot)
+library(glue)
 
 census_api_key(Sys.getenv("CENSUS_API_KEY"))
 ag_census_api_key <- Sys.getenv("AG_CENSUS_API_KEY")
@@ -145,12 +146,14 @@ subsetter <- function(topic) {
     mutate(
       across(all_of(cols), normalize))
 
-  d$overall <- rowMeans(d[,cols], na.rm = TRUE)
-
+  d$mean <- rowMeans(d[,cols], na.rm = TRUE)
+  d$composite <- rescale(d$mean, to = c(0, 100))
+  
   d <- counties %>%
     merge(d, by.x = 'GEOID', by.y = 'fips') %>%
     st_transform(4326) %>%
-    st_set_geometry('geometry')
+    st_set_geometry('geometry') %>%
+    select(-mean)
 
   return(d)
 }
@@ -302,7 +305,13 @@ Participation in grant programs supporting investment in local food systems, suc
 
 This report will assess the relationship of each of these community characteristics to the distribution of LAMP grants across the US.
 
-```{r combine all data for PCA}
+### Exploration of available data
+
+As a first step, a variety of data sets were obtained, cleaned, and used for some general data exploration.
+
+#### Indicators of community wealth
+
+```{r prep comm wealth data}
 
 ## Community Wealth
 comm_wealth_url <- 'https://raw.githubusercontent.com/CSU-Local-and-Regional-Food-Systems/USDA-AMS-Data-and-Metrics/main/Indicators%20of%20Community%20Wealth/community_wealth.csv'
@@ -317,6 +326,258 @@ add_leading_zero <- function(x) {
 
 # apply funcion to fips column
 comm_wealth_all$fips <- sapply(comm_wealth_all$fips, add_leading_zero)
+```
+
+```{r wealth data subset}
+#| warnings: false
+
+infrastructure <- subsetter("Infrastructure") %>%
+  select(-broad_11)
+food_processors <- subsetter("Food Processors")
+community_resources <- subsetter("Community Resources")
+population <- subsetter("Population")
+financial <- subsetter("Financial")
+food_insecurity <- subsetter("Food Insecurity")
+natural <- subsetter("Natural")
+agriculture <- subsetter("Agriculture")
+```
+
+##### Exploratory map of community wealth data
+
+```{r wealth map}
+#| warnings: false
+
+bins <- seq(from = 0, to = 1, by = 0.2)
+pal <- colorBin("YlOrRd", domain = 0:1, bins = bins)
+
+pal_generator <- function(d, pal = 'RdPu') {
+  return(colorQuantile(palette = pal, domain = d$overall, n = 6, na.color = 'grey75'))
+}
+
+label_generator <- function(d) {
+  d_name <- deparse(substitute(d))
+  label <- paste0("<strong>{", d_name, "$county_name}</strong>")
+  for (i in 4:ncol(d)-1) {
+    label <- paste0(label,'<br/>', colnames(d)[i], ': {', d_name, '$', colnames(d)[i], "}")
+  }
+  return(
+    glue(label) %>% lapply(htmltools::HTML)
+  )
+}
+
+my_map %>%
+  addPolygons(
+    data = natural,
+    weight = 0.5,
+    color = 'white',
+    fillOpacity = 1,
+    fillColor = pal_generator(
+      natural, 
+      as.vector(paletteer_d("MetBrewer::Hokusai2")))(natural$composite),
+    group = "Natural_Resources",
+    popup = label_generator(natural),
+    popupOptions = popupOptions(
+      #keepInView = TRUE,
+      closeOnClick = TRUE
+    )
+  ) %>%
+  addPolygons(
+    data = agriculture,
+    weight = 0.5,
+    color = 'white',
+    fillOpacity = 1,
+    fillColor = pal_generator(
+      agriculture,
+      as.vector(paletteer_d("MetBrewer::VanGogh3"))
+      )(agriculture$composite),
+    group = "Agricultural_Resources",
+    popup = label_generator(agriculture)
+    ) %>%
+  addPolygons(
+    data = financial,
+    weight = 0.5,
+    color = 'white',
+    fillOpacity = 1,
+    fillColor = pal_generator(
+      financial,
+      as.vector(paletteer_d("MetBrewer::OKeeffe2"))
+    )(financial$composite),
+    group = "Financial_Resources",
+    popup = label_generator(financial)
+    ) %>%
+  addPolygons(
+    data = community_resources,
+    weight = 0.5,
+    color = 'white',
+    fillOpacity = 1,
+    fillColor = pal_generator(
+      community_resources,
+      'YlGnBu'
+      )(community_resources$composite),
+    group = "Community_Resources",
+    popup = label_generator(community_resources)
+    ) %>%
+  addPolygons(
+    data = infrastructure,
+    weight = 0.5,
+    color = 'white',
+    fillOpacity = 1,
+    fillColor = pal_generator(
+      infrastructure,
+      as.vector(paletteer_d("Redmonder::sPBIRdPu"))
+      )(infrastructure$composite),
+    group = "Infrastructure",
+    popup = label_generator(infrastructure)
+    ) %>%
+  addPolygons(
+    data = food_insecurity,
+    weight = 0.5,
+    color = 'white',
+    fillOpacity = 1,
+    fillColor = pal_generator(food_insecurity)(food_insecurity$composite),
+    group = "Food_Security",
+    popup = label_generator(food_insecurity)
+    ) %>%
+  addPolygons(
+    data = population,
+    weight = 0.5,
+    color = 'white',
+    fillOpacity = 1,
+    fillColor = pal_generator(
+      population,
+      as.vector('YlOrBr')
+      )(population$composite),
+    group = "Population",
+    popup = label_generator(population)
+    ) %>%
+  addPolygons(
+    data = food_processors,
+    weight = 0.5,
+    color = 'white',
+    fillOpacity = 1,
+    fillColor = pal_generator(
+      food_processors,
+      as.vector(paletteer_d("Redmonder::sPBIYlGn"))
+      )(food_processors$composite),
+    group = "Food_Processors",
+    popup = label_generator(food_processors)
+    ) %>%
+  addLegend(
+    "bottomright",
+    pal = pal_generator(
+      natural, 
+      as.vector(paletteer_d("MetBrewer::Hokusai2"))),
+    opacity = 1,
+    values = natural$composite,
+    title = HTML('Natural Resources<br>Index Score'),
+    group = "Natural_Resources",
+    className = "info legend Natural_Resources"
+  ) %>%
+  addLegend(
+    "bottomright",
+    pal = pal_generator(
+      agriculture, 
+      as.vector(paletteer_d("MetBrewer::VanGogh3"))),
+    opacity = 1,
+    values = agriculture$composite,
+    title = HTML('Agricultural Resources<br>Index Score'),
+    group = "Agricultural_Resources",
+    className = 'info legend Agricultural_Resources') %>%
+  addLegend(
+    "bottomright",
+    pal = pal_generator(
+      financial,
+      as.vector(paletteer_d("MetBrewer::OKeeffe2"))
+      ),
+    opacity = 1,
+    values = financial$composite,
+    title = HTML('Financial Resources<br>Index Score'),
+    group = "Financial_Resources",
+    className = "info legend Financial_Resources"
+    ) %>%
+  addLegend(
+    "bottomright",
+    pal = pal_generator(
+      community_resources,
+      'YlGnBu'
+      ),
+    opacity = 1,
+    values = community_resources$composite,
+    title = HTML('Commnunity Resources<br>Index Score'),
+    group = "Community_Resources",
+    className = 'info legend Community_Resources') %>%
+  addLegend(
+    "bottomright",
+    pal = pal_generator(
+      food_processors,
+      as.vector(paletteer_d("Redmonder::sPBIYlGn"))
+      ),
+    opacity = 1,
+    values = food_processors$composite,
+    title = HTML('Food Processors<br>Index Score'),
+    group = "Food_Processors",
+    className = "info legend Food_Processors") %>%
+  addLegend(
+    "bottomright",
+    pal = pal_generator(
+      infrastructure,
+      as.vector(paletteer_d("Redmonder::sPBIRdPu"))
+    ),
+    opacity = 1,
+    values = infrastructure$composite,
+    title = HTML('Infrastructure<br>Index Score'),
+    group = "Infrastructure",
+    className = "info legend Infrastructure") %>%
+  addLegend(
+    "bottomright",
+    pal = pal_generator(food_insecurity),
+    opacity = 1,
+    values = food_insecurity$composite,
+    title = HTML('Food Security<br>Index Score'),
+    group = "Food_Security",
+    className = "info legend Food_Security") %>%
+  addLegend(
+    "bottomright",
+    pal = pal_generator(
+      population, "YlOrBr"
+      ),
+    opacity = 1,
+    values = population$composite,
+    title = HTML('Population<br>Index Score'),
+    group = "Population",
+    className = "info legend Population") %>%
+  addLayersControl(
+    baseGroups = c(
+      "Agricultural_Resources",
+      "Infrastructure",
+      "Food_Security",
+      "Population",
+      "Food_Processors",
+      "Community_Resources",
+      "Financial_Resources",
+      "Natural_Resources"
+    ),
+    options = layersControlOptions(collapsed = TRUE)
+  ) %>%
+    htmlwidgets::onRender(
+      "
+        function(el, x) {
+           var updateLegend = function () {
+              var selectedGroup = document.querySelectorAll('input:checked')[0].nextSibling.innerText.substr(1);
+
+              document.querySelectorAll('.legend').forEach(a => a.hidden=true);
+              document.querySelectorAll('.legend').forEach(l => {
+                 if (l.classList.contains(selectedGroup)) l.hidden=false;
+              });
+           };
+           updateLegend();
+           this.on('baselayerchange', el => updateLegend());
+        }"
+    ) %>%
+  bslib::card(full_screen = TRUE)
+```
+
+```{r combine all data for PCA}
 
 comm_wealth <- comm_wealth_all %>%
   select(fips, year, variable_name, value) %>%
@@ -409,7 +670,7 @@ for(i in 1:ncol(d)){
 
 ```
 
-### Indicators of community wealth
+### Dimension reduction with PCA
 
 Started with 44 variables, which were reduced to 10 using a principal components analysis.
 
@@ -533,221 +794,7 @@ reduced_d <- rotated_data %>% rename_at(vars(all_of(oldnames)), ~ newnames)
 # h
 ```
 
-```{r wealth data subset}
-#| warnings: false
-
-infrastructure <- subsetter("Infrastructure") %>%
-  select(-broad_11)
-food_processors <- subsetter("Food Processors")
-community_resources <- subsetter("Community Resources")
-population <- subsetter("Population")
-financial <- subsetter("Financial")
-food_insecurity <- subsetter("Food Insecurity")
-natural <- subsetter("Natural")
-agriculture <- subsetter("Agriculture")
-```
-
-```{r wealth map}
-#| warnings: false
-
-bins <- seq(from = 0, to = 1, by = 0.2)
-pal <- colorBin("YlOrRd", domain = 0:1, bins = bins)
-
-pal_generator <- function(d, pal = 'RdPu') {
-  return(colorQuantile(palette = pal, domain = d$overall, n = 6, na.color = 'grey75'))
-}
-
-my_map %>%
-  addPolygons(
-    data = natural,
-    weight = 0.5,
-    color = 'white',
-    fillOpacity = 1,
-    fillColor = pal_generator(
-      natural, 
-      as.vector(paletteer_d("MetBrewer::Hokusai2")))(natural$overall),
-    group = "Natural_Resources",
-    ) %>%
-  addPolygons(
-    data = agriculture,
-    weight = 0.5,
-    color = 'white',
-    fillOpacity = 1,
-    fillColor = pal_generator(
-      agriculture,
-      as.vector(paletteer_d("MetBrewer::VanGogh3"))
-      )(agriculture$overall),
-    group = "Agricultural_Resources") %>%
-  addPolygons(
-    data = financial,
-    weight = 0.5,
-    color = 'white',
-    fillOpacity = 1,
-    fillColor = pal_generator(
-      financial,
-      as.vector(paletteer_d("MetBrewer::OKeeffe2"))
-    )(financial$overall),
-    group = "Financial_Resources") %>%
-  addPolygons(
-    data = community_resources,
-    weight = 0.5,
-    color = 'white',
-    fillOpacity = 1,
-    fillColor = pal_generator(
-      community_resources,
-      'YlGnBu'
-      )(community_resources$overall),
-    group = "Community_Resources") %>%
-  addPolygons(
-    data = infrastructure,
-    weight = 0.5,
-    color = 'white',
-    fillOpacity = 1,
-    fillColor = pal_generator(
-      infrastructure,
-      as.vector(paletteer_d("Redmonder::sPBIRdPu"))
-      )(infrastructure$overall),
-    group = "Infrastructure") %>%
-  addPolygons(
-    data = food_insecurity,
-    weight = 0.5,
-    color = 'white',
-    fillOpacity = 1,
-    fillColor = pal_generator(food_insecurity)(food_insecurity$overall),
-    group = "Food_Security") %>%
-  addPolygons(
-    data = population,
-    weight = 0.5,
-    color = 'white',
-    fillOpacity = 1,
-    fillColor = pal_generator(
-      population,
-      as.vector('YlOrBr')
-      )(population$overall),
-    group = "Population") %>%
-  addPolygons(
-    data = food_processors,
-    weight = 0.5,
-    color = 'white',
-    fillOpacity = 1,
-    fillColor = pal_generator(
-      food_processors,
-      as.vector(paletteer_d("Redmonder::sPBIYlGn"))
-      )(food_processors$overall),
-    group = "Food_Processors") %>%
-  addLegend(
-    "bottomright",
-    pal = pal_generator(
-      natural, 
-      as.vector(paletteer_d("MetBrewer::Hokusai2"))),
-    opacity = 1,
-    values = natural$overall,
-    title = HTML('Natural Resources<br>Index Score'),
-    group = "Natural_Resources",
-    className = "info legend Natural_Resources"
-  ) %>%
-  addLegend(
-    "bottomright",
-    pal = pal_generator(
-      agriculture, 
-      as.vector(paletteer_d("MetBrewer::VanGogh3"))),
-    opacity = 1,
-    values = agriculture$overall,
-    title = HTML('Agricultural Resources<br>Index Score'),
-    group = "Agricultural_Resources",
-    className = 'info legend Agricultural_Resources') %>%
-  addLegend(
-    "bottomright",
-    pal = pal_generator(
-      financial,
-      as.vector(paletteer_d("MetBrewer::OKeeffe2"))
-      ),
-    opacity = 1,
-    values = financial$overall,
-    title = HTML('Financial Resources<br>Index Score'),
-    group = "Financial_Resources",
-    className = "info legend Financial_Resources"
-    ) %>%
-  addLegend(
-    "bottomright",
-    pal = pal_generator(
-      community_resources,
-      'YlGnBu'
-      ),
-    opacity = 1,
-    values = community_resources$overall,
-    title = HTML('Commnunity Resources<br>Index Score'),
-    group = "Community_Resources",
-    className = 'info legend Community_Resources') %>%
-  addLegend(
-    "bottomright",
-    pal = pal_generator(
-      food_processors,
-      as.vector(paletteer_d("Redmonder::sPBIYlGn"))
-      ),
-    opacity = 1,
-    values = food_processors$overall,
-    title = HTML('Food Processors<br>Index Score'),
-    group = "Food_Processors",
-    className = "info legend Food_Processors") %>%
-  addLegend(
-    "bottomright",
-    pal = pal_generator(
-      infrastructure,
-      as.vector(paletteer_d("Redmonder::sPBIRdPu"))
-    ),
-    opacity = 1,
-    values = infrastructure$overall,
-    title = HTML('Infrastructure<br>Index Score'),
-    group = "Infrastructure",
-    className = "info legend Infrastructure") %>%
-  addLegend(
-    "bottomright",
-    pal = pal_generator(food_insecurity),
-    opacity = 1,
-    values = food_insecurity$overall,
-    title = HTML('Food Security<br>Index Score'),
-    group = "Food_Security",
-    className = "info legend Food_Security") %>%
-  addLegend(
-    "bottomright",
-    pal = pal_generator(
-      population, "YlOrBr"
-      ),
-    opacity = 1,
-    values = population$overall,
-    title = HTML('Population<br>Index Score'),
-    group = "Population",
-    className = "info legend Population") %>%
-  addLayersControl(
-    baseGroups = c(
-      "Agricultural_Resources",
-      "Infrastructure",
-      "Food_Security",
-      "Population",
-      "Food_Processors",
-      "Community_Resources",
-      "Financial_Resources",
-      "Natural_Resources"
-    ),
-    options = layersControlOptions(collapsed = TRUE)
-  ) %>%
-    htmlwidgets::onRender(
-      "
-        function(el, x) {
-           var updateLegend = function () {
-              var selectedGroup = document.querySelectorAll('input:checked')[0].nextSibling.innerText.substr(1);
-
-              document.querySelectorAll('.legend').forEach(a => a.hidden=true);
-              document.querySelectorAll('.legend').forEach(l => {
-                 if (l.classList.contains(selectedGroup)) l.hidden=false;
-              });
-           };
-           updateLegend();
-           this.on('baselayerchange', el => updateLegend());
-        }"
-    ) %>%
-  bslib::card(full_screen = TRUE)
+```         
 ```
 
 ### Plot of wealth indices vs Award Amounts
