@@ -202,7 +202,7 @@ lamp_by_county <- counties %>%
   select(GEOID, county_name, lamp_funded, Award.Amount)
 ```
 
-#### Distribution of LAMP Grant funding across CONUS
+##### Distribution of LAMP Grant funding across CONUS
 
 ```{r lamp funded leaflet map}
 
@@ -240,7 +240,19 @@ my_map %>%
   bslib::card(full_screen = TRUE)
 ```
 
-## Community wealth
+## Community characteristics
+
+Participation in grant programs supporting investment in local food systems, such as LAMP, is influenced by a variety of socio-economic and environmental factors that influence local needs, as well as local capacity to apply for grants and manage funded projects. Community wealth, which encompasses social capital, natural capital, financial capital, and a variety of other forms of wealth impacts the ability to engage and participate in such programs.[^4] Moreover, things like poverty and food insecurity rates have been shown to exacerbate vulnerabilities and influence accessibility and participation in programs.[^5] With programs like LAMP that are focused on food systems, urbanization and proximity to agricultural land can influence market dynamics and food system connectivity.[^6]
+
+[^4]: Flora, Cornelia Butler, Jan L. Flora, and Stephen P. Gasteyer. *Rural Communities: Legacy and Change*. 4th ed. Routledge, 2018. <https://doi.org/10.4324/9780429494697>.
+
+[^5]: Alisha Coleman-Jensen, Matthew P. Rabbitt, Christian A. Gregory, and Anita Singh.
+    2021. Household Food Security in the United States in 2020, ERR-298, U.S. Department
+    of Agriculture, Economic Research Service.
+
+[^6]: Pothukuchi, Kameshwari, and Jerome L. Kaufman. “The Food System: A Stranger to the Planning Field.” *Journal of the American Planning Association* 66, no. 2 (June 30, 2000): 113–24. <https://doi.org/10.1080/01944360008976093>.
+
+### Community wealth
 
 ```{r community wealth data prep}
 #| output: false
