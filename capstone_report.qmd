@@ -104,6 +104,8 @@ library(rio)
 library(janitor)
 library(paletteer)
 library(scales)
+library(ggpubr)
+library(ggcorrplot)
 
 census_api_key(Sys.getenv("CENSUS_API_KEY"))
 ag_census_api_key <- Sys.getenv("AG_CENSUS_API_KEY")
@@ -128,6 +130,54 @@ my_map <- leaflet(options = leafletOptions(minZoom = 4)) %>%
     lat1 = 49.5,
     lng2 = -66.8,
     lat2 = 24.4)
+
+subsetter <- function(topic) {
+  d <- comm_wealth %>%
+    filter(topic_area == topic) %>%
+    select(fips, year, variable_name, value) %>%
+    group_by(fips, variable_name) %>%
+    summarise(value = mean(value, na.rm = TRUE)) %>%
+    ungroup() %>%
+    pivot_wider(names_from = variable_name, values_from = value)
+
+  cols <- colnames(select_if(d, is.numeric))
+  d <- d %>%
+    mutate(
+      across(all_of(cols), normalize))
+
+  d$overall <- rowMeans(d[,cols], na.rm = TRUE)
+
+  d <- counties %>%
+    merge(d, by.x = 'GEOID', by.y = 'fips') %>%
+    st_transform(4326) %>%
+    st_set_geometry('geometry')
+
+  return(d)
+}
+
+pca_prep <- function(d){
+  rownames(d) <- d$GEOID
+  d <- d %>%
+    st_drop_geometry() %>%
+    drop_na() %>%
+    select(-c(GEOID, county_name, overall))
+  return(d)
+}
+
+# pca_reduce <- function(d){
+#   pca_results <- PCA(pca_prep(d), graph = FALSE)
+#   eig_keepers <- data.frame(pca_results$eig) %>%
+#     filter(eigenvalue >= 1.0)
+#   comps <- nrow(eig_keepers)
+#   if (comps > 0) {
+#     scores <- pca_results$var$coord %>% as_tibble()
+#     df_reduced <- scores[,1:comps]
+#     colnames(df_reduced) <- paste(deparse(substitute(d)), colnames(df_reduced), sep = "_")
+#     return(data.frame(df_reduced))
+#   } else {
+#     return(NULL)
+#   }
+# }
 ```
 
 ### Local Agriculture Market Program (LAMP)
@@ -242,7 +292,7 @@ my_map %>%
 
 ## Community characteristics
 
-Participation in grant programs supporting investment in local food systems, such as LAMP, is influenced by a variety of socio-economic and environmental factors that influence local needs, as well as local capacity to apply for grants and manage funded projects. Community wealth, which encompasses social capital, natural capital, financial capital, and a variety of other forms of wealth impacts the ability to engage and participate in such programs.[^4] Moreover, things like poverty and food insecurity rates have been shown to exacerbate vulnerabilities and influence accessibility and participation in programs.[^5] With programs like LAMP that are focused on food systems, urbanization and proximity to agricultural land can influence market dynamics and food system connectivity.[^6]
+Participation in grant programs supporting investment in local food systems, such as LAMP, is influenced by a variety of socioeconomic and environmental factors that influence local needs, as well as local capacity to apply for grants and manage funded projects. Community wealth, which encompasses social capital, natural capital, financial capital, and a variety of other forms of wealth impacts the ability to engage and participate in such programs.[^4] Moreover, things like poverty and food insecurity rates have been shown to exacerbate vulnerabilities and influence accessibility and participation in programs.[^5] With food systems-focused programs such as LAMP, urbanization and proximity to agricultural land can influence market dynamics and food system connectivity.[^6]
 
 [^4]: Flora, Cornelia Butler, Jan L. Flora, and Stephen P. Gasteyer. *Rural Communities: Legacy and Change*. 4th ed. Routledge, 2018. <https://doi.org/10.4324/9780429494697>.
 
@@ -252,61 +302,129 @@ Participation in grant programs supporting investment in local food systems, suc
 
 [^6]: Pothukuchi, Kameshwari, and Jerome L. Kaufman. “The Food System: A Stranger to the Planning Field.” *Journal of the American Planning Association* 66, no. 2 (June 30, 2000): 113–24. <https://doi.org/10.1080/01944360008976093>.
 
-### Community wealth
+This report will assess the relationship of each of these community characteristics to the distribution of LAMP grants across the US.
+
+### Indicators of community wealth
+
+#### Community characteristics
 
 ```{r community wealth data prep}
-#| output: false
 
-# comm_wealth_url <- 'https://raw.githubusercontent.com/CSU-Local-and-Regional-Food-Systems/USDA-AMS-Data-and-Metrics/main/Indicators%20of%20Community%20Wealth/community_wealth.csv'
-# comm_wealth <- read.csv(comm_wealth_url) %>%
-#   filter(fips > 100) # remove national level rows
-# 
-# # Function to add leading 0 to 4-digit fips values in comm_wealth to facilitate later joins
-# add_leading_zero <- function(x) {
-#   # Check if the number has 4 digits
-#   ifelse(nchar(x) == 4, paste0("0", x), x)
-# }
-# 
-# # apply funcion to fips column
-# comm_wealth$fips <- sapply(comm_wealth$fips, add_leading_zero)
+comm_wealth_url <- 'https://raw.githubusercontent.com/CSU-Local-and-Regional-Food-Systems/USDA-AMS-Data-and-Metrics/main/Indicators%20of%20Community%20Wealth/community_wealth.csv'
+comm_wealth <- read.csv(comm_wealth_url) %>%
+  filter(fips > 100) # remove national level rows
+
+# Function to add leading 0 to 4-digit fips values in comm_wealth to facilitate later joins
+add_leading_zero <- function(x) {
+  # Check if the number has 4 digits
+  ifelse(nchar(x) == 4, paste0("0", x), x)
+}
+
+# apply funcion to fips column
+comm_wealth$fips <- sapply(comm_wealth$fips, add_leading_zero)
 ```
+
+##### Infrastructure
+
+-   part of this data comes from Schmitt et al - the PCs developed in that paper
+
+-   the other variables come from ... somewhere else?
+
+```{r infrastructure}
+#| fig-align: center
+#| fig-width: 10
+#| fig-height: 5
+
+infrastructure <- subsetter("Infrastructure")
+infrastructure <- pca_prep(infrastructure)
+
+correlation <- cor(infrastructure, use = "complete.obs")
+c <- ggcorrplot(correlation, hc.order = TRUE, outline.col = "white", 
+           type = 'lower', colors = c("#E46726",  "white", "#6D9EC1"),
+           #ggtheme = ggplot2::theme_gray, 
+           lab = TRUE,
+           lab_size = 2.5, tl.cex = 6, title = "Correlation matrix -\nInfrastructure variables",
+           show.legend = FALSE)
+
+h <- infrastructure %>%
+  pivot_longer(everything(), names_to = "variable", values_to = "value") %>%
+  mutate(value = round(value, 2)) %>%
+  ggplot(aes(value)) + 
+  geom_histogram(
+    linewidth = 0.8,
+    boundary = 0.5,
+    bins = 8,
+    color = '#2F414BFF',
+    fill = '#CCD99CFF',
+    ) + 
+  facet_wrap(
+    ~variable, 
+    scales = 'free_x',
+    ncol = 5
+    #shrink = FALSE,
+    
+    ) +
+  theme_minimal() +
+  theme(
+    strip.background =element_rect(fill="#2F414BFF"),
+    strip.text = element_text(colour = 'grey76'),
+    axis.title.x = element_blank(),
+    axis.title.y = element_blank()
+    ) +
+  labs(
+    title = "Histograms - Infrastructure variables",
+    ylab = '',
+    xlab = ''
+  )
+
+#ggarrange(c, h, ncol = 1, nrow = 2)
+ggplotly(h) %>% config(displayModeBar = FALSE)
+
+#pca_results <- PCA(pca_prep(d), graph = FALSE)
+pca_results <- prcomp(infrastructure, scale = TRUE)
+
+
+# eig_keepers <- data.frame(pca_results$eig) %>%
+#     filter(eigenvalue >= 1.0)
+#   comps <- nrow(eig_keepers)
+#   if (comps > 0) {
+#     scores <- pca_results$var$coord %>% as_tibble()
+#     df_reduced <- scores[,1:comps]
+#     colnames(df_reduced) <- paste(deparse(substitute(d)), colnames(df_reduced), sep = "_")
+#     return(data.frame(df_reduced))
+#   } else {
+#     return(NULL)
+#   }
+
+
+```
+
+##### Community resources
+
+##### Population
+
+##### Financial
+
+##### Natural
+
+##### Agriculture
+
+#### Processing and distribution
+
+#### Food access
+
+## Community Characteristics" "Processing & Distribution" "Food Access"
 
 ```{r wealth data subset}
 #| warnings: false
 
-# subsetter <- function(topic) {
-#   d <- comm_wealth %>%
-#     filter(topic_area == topic) %>%
-#     select(fips, year, variable_name, value) %>%
-#     group_by(fips, variable_name) %>%
-#     summarise(value = mean(value, na.rm = TRUE)) %>%
-#     ungroup() %>%
-#     pivot_wider(names_from = variable_name, values_from = value)
-#   
-#   cols <- colnames(select_if(d, is.numeric))
-#   d <- d %>%
-#     mutate(
-#       across(all_of(cols), normalize))
-#   
-#   d$overall <- rowMeans(d[,cols], na.rm = TRUE)
-#   
-#   d <- counties %>%
-#     rename(County = NAMELSAD) %>%
-#     merge(d, by.x = 'GEOID', by.y = 'fips') %>%
-#     st_transform(4326) %>%
-#     st_set_geometry('geometry')
-#   
-#   return(d)
-# }
-# 
-# infrastructure <- subsetter("Infrastructure")
-# food_processors <- subsetter("Food Processors")
-# community_resources <- subsetter("Community Resources")
-# population <- subsetter("Population")
-# financial <- subsetter("Financial")
-# food_insecurity <- subsetter("Food Insecurity")
-# natural <- subsetter("Natural")
-# agriculture <- subsetter("Agriculture")
+food_processors <- subsetter("Food Processors")
+community_resources <- subsetter("Community Resources")
+population <- subsetter("Population")
+financial <- subsetter("Financial")
+food_insecurity <- subsetter("Food Insecurity")
+natural <- subsetter("Natural")
+agriculture <- subsetter("Agriculture")
 ```
 
 ```{r wealth map}
@@ -903,29 +1021,7 @@ Use principal component analysis (PCA) to reduce dimensionality of datasets and 
 
 ```{r pc eh}
 
-# pca_prep <- function(d){
-#   rownames(d) <- d$GEOID
-#   d <- d %>% 
-#     st_drop_geometry() %>%
-#     drop_na() %>%
-#     select(-c(GEOID, County, overall))
-#   return(d)
-# }
-# 
-# pca_reduce <- function(d){
-#   pca_results <- PCA(pca_prep(d), graph = FALSE)
-#   eig_keepers <- data.frame(pca_results$eig) %>% 
-#     filter(eigenvalue >= 1.0)
-#   comps <- nrow(eig_keepers)
-#   if (comps > 0) {
-#     scores <- pca_results$var$coord %>% as_tibble()
-#     df_reduced <- scores[,1:comps]
-#     colnames(df_reduced) <- paste(deparse(substitute(d)), colnames(df_reduced), sep = "_")
-#     return(data.frame(df_reduced))
-#   } else {
-#     return(NULL)
-#   }
-# }
+
 # 
 # # infrastructure
 # infrastructure_pc <- pca_reduce(infrastructure)

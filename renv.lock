@@ -1240,6 +1240,19 @@
       ],
       "Hash": "45aa4def70a402e7d20efde490c13ecb"
     },
+    "ggcorrplot": {
+      "Package": "ggcorrplot",
+      "Version": "0.1.4.1",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "R",
+        "ggplot2",
+        "reshape2",
+        "stats"
+      ],
+      "Hash": "aad38d027d0dd18621e213919c20a65f"
+    },
     "ggplot2": {
       "Package": "ggplot2",
       "Version": "3.5.1",
@@ -1267,9 +1280,14 @@
     },
     "ggpubr": {
       "Package": "ggpubr",
-      "Version": "0.6.0",
-      "Source": "Repository",
-      "Repository": "CRAN",
+      "Version": "0.6.0.999",
+      "Source": "GitHub",
+      "RemoteType": "github",
+      "RemoteHost": "api.github.com",
+      "RemoteRepo": "ggpubr",
+      "RemoteUsername": "kassambara",
+      "RemoteRef": "HEAD",
+      "RemoteSha": "6aeb4f701399929b130917e797658819c71a2304",
       "Requirements": [
         "R",
         "cowplot",
@@ -1292,7 +1310,7 @@
         "tidyr",
         "utils"
       ],
-      "Hash": "c957612b8bb1ee9ab7b2450d26663e7e"
+      "Hash": "f5e0ba18905c109687977a81d335c2c7"
     },
     "ggrepel": {
       "Package": "ggrepel",
