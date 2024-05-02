@@ -347,7 +347,7 @@ c <- ggcorrplot(correlation, hc.order = TRUE, outline.col = "white",
            show.legend = FALSE)
 
 h <- infrastructure %>%
-  pivot_longer(everything(), names_to = "variable", values_to = "value") %>%
+  pivot_longer(everything(), names_to= "variable", values_to = "value") %>%
   mutate(value = round(value, 2)) %>%
   ggplot(aes(value)) + 
   geom_histogram(
