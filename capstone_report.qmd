@@ -409,6 +409,10 @@ for(i in 1:ncol(d)){
 
 ```
 
+### Indicators of community wealth
+
+Started with 44 variables, which were reduced to 10 using a principal components analysis.
+
 ```{r principal components analysis}
 #| fig-align: center
 #| fig-width: 10
@@ -459,9 +463,18 @@ rotated_data <- data.frame(res.pca$x[,1:k])
 
 ```
 
-### Indicators of community wealth
+#### Principal components
 
-Started with 44 variables, which were reduced to 10 using a principal components analysis.
+```{r rename principal component variables}
+
+oldnames = colnames(rotated_data)
+newnames = c("pc1_education", "pc2_arts", "pc3_conservation1", "pc4_farmland1",
+             "pc5_infrastructure", "pc6_farmland2", "pc7_manufacturing",
+             "pc8_conservation2", "pc9_foodbev", "pc10_civics")
+
+reduced_d <- rotated_data %>% rename_at(vars(all_of(oldnames)), ~ newnames)
+
+```
 
 #### Community characteristics
 
@@ -476,63 +489,55 @@ Started with 44 variables, which were reduced to 10 using a principal components
 #| fig-width: 10
 #| fig-height: 3
 
-infrastructure <- subsetter("Infrastructure") %>%
-  select(-broad_11)
-infrastructure <- pca_prep(infrastructure)
-
-correlation <- cor(infrastructure, use = "complete.obs")
-c <- ggcorrplot(correlation, hc.order = TRUE, outline.col = "white", 
-           type = 'lower', colors = c("#E46726",  "white", "#6D9EC1"),
-           #ggtheme = ggplot2::theme_gray, 
-           lab = TRUE,
-           lab_size = 2.5, tl.cex = 6, title = "Correlation matrix -\nInfrastructure variables",
-           show.legend = FALSE)
-
-h <- infrastructure %>%
-  pivot_longer(everything(), names_to= "variable", values_to = "value") %>%
-  mutate(value = round(value, 2)) %>%
-  ggplot(aes(value)) + 
-  geom_histogram(
-    linewidth = 0.6,
-    boundary = 0.5,
-    bins = 8,
-    color = '#2F414BFF',
-    fill = '#CCD99CFF',
-    ) + 
-  facet_wrap(
-    ~variable, 
-    scales = 'free_x',
-    ncol = 5
-    ) +
-  theme_minimal() +
-  theme(
-    strip.background =element_rect(fill="#2F414BFF"),
-    strip.text = element_text(color = 'grey76', face = 'bold'),
-    axis.title.x = element_blank(),
-    axis.title.y = element_blank()
-    ) +
-  labs(
-    title = "Histograms - Infrastructure variables",
-    ylab = '',
-    xlab = ''
-  )
-
-h
+# infrastructure <- subsetter("Infrastructure") %>%
+#   select(-broad_11)
+# infrastructure <- pca_prep(infrastructure)
+# 
+# correlation <- cor(infrastructure, use = "complete.obs")
+# c <- ggcorrplot(correlation, hc.order = TRUE, outline.col = "white", 
+#            type = 'lower', colors = c("#E46726",  "white", "#6D9EC1"),
+#            #ggtheme = ggplot2::theme_gray, 
+#            lab = TRUE,
+#            lab_size = 2.5, tl.cex = 6, title = "Correlation matrix -\nInfrastructure variables",
+#            show.legend = FALSE)
+# 
+# h <- infrastructure %>%
+#   pivot_longer(everything(), names_to= "variable", values_to = "value") %>%
+#   mutate(value = round(value, 2)) %>%
+#   ggplot(aes(value)) + 
+#   geom_histogram(
+#     linewidth = 0.6,
+#     boundary = 0.5,
+#     bins = 8,
+#     color = '#2F414BFF',
+#     fill = '#CCD99CFF',
+#     ) + 
+#   facet_wrap(
+#     ~variable, 
+#     scales = 'free_x',
+#     ncol = 5
+#     ) +
+#   theme_minimal() +
+#   theme(
+#     strip.background =element_rect(fill="#2F414BFF"),
+#     strip.text = element_text(color = 'grey76', face = 'bold'),
+#     axis.title.x = element_blank(),
+#     axis.title.y = element_blank()
+#     ) +
+#   labs(
+#     title = "Histograms - Infrastructure variables",
+#     ylab = '',
+#     xlab = ''
+#   )
+# 
+# h
 ```
-
-##### Community resources
-
-##### Population
-
-##### Financial
-
-##### Natural
-
-##### Agriculture
 
 ```{r wealth data subset}
 #| warnings: false
 
+infrastructure <- subsetter("Infrastructure") %>%
+  select(-broad_11)
 food_processors <- subsetter("Food Processors")
 community_resources <- subsetter("Community Resources")
 population <- subsetter("Population")
@@ -545,172 +550,165 @@ agriculture <- subsetter("Agriculture")
 ```{r wealth map}
 #| warnings: false
 
-#bins <- seq(from = 0, to = 1, by = 0.2)
-#pal <- colorBin("YlOrRd", domain = 0:1, bins = bins)
+bins <- seq(from = 0, to = 1, by = 0.2)
+pal <- colorBin("YlOrRd", domain = 0:1, bins = bins)
 
-# pal_generator <- function(d, pal = 'RdPu') {
-#   return(colorQuantile(palette = pal, domain = d$overall, n = 9))
-# }
-# 
-# my_map %>%
-# # leaflet(options = leafletOptions(minZoom = 4)) %>%
-# #   addTiles() %>%
-# #   setMaxBounds(
-# #     lng1 = -124.8,
-# #     lat1 = 49.5,
-# #     lng2 = -66.8,
-# #     lat2 = 24.4) %>%
-#   addPolygons(
-#     data = natural,
-#     weight = 0.5,
-#     color = 'white',
-#     fillOpacity = 1,
-#     fillColor = pal_generator(natural)(natural$overall),
-#     group = "Natural_Resources",
-#     ) %>%
-#   addPolygons(
-#     data = agriculture,
-#     weight = 0.5,
-#     color = 'white',
-#     fillOpacity = 1,
-#     fillColor = pal_generator(agriculture)(agriculture$overall),
-#     group = "Agricultural_Resources") %>%
-#   addPolygons(
-#     data = financial,
-#     weight = 0.5,
-#     color = 'white',
-#     fillOpacity = 1,
-#     fillColor = pal_generator(financial)(financial$overall),
-#     group = "Financial_Resources") %>%
-#   addPolygons(
-#     data = community_resources,
-#     weight = 0.5,
-#     color = 'white',
-#     fillOpacity = 1,
-#     fillColor = pal_generator(community_resources)(community_resources$overall),
-#     group = "Community_Resources") %>%
-#   addPolygons(
-#     data = infrastructure,
-#     weight = 0.5,
-#     color = 'white',
-#     fillOpacity = 1,
-#     fillColor = pal_generator(infrastructure)(infrastructure$overall),
-#     group = "Infrastructure") %>%
-#   addPolygons(
-#     data = food_insecurity,
-#     weight = 0.5,
-#     color = 'white',
-#     fillOpacity = 1,
-#     fillColor = pal_generator(food_insecurity)(food_insecurity$overall),
-#     group = "Food_Insecurity") %>%
-#   addPolygons(
-#     data = population,
-#     weight = 0.5,
-#     color = 'white',
-#     fillOpacity = 1,
-#     fillColor = pal_generator(population)(population$overall),
-#     group = "Population") %>%
-#   addPolygons(
-#     data = food_processors,
-#     weight = 0.5,
-#     color = 'white',
-#     fillOpacity = 1,
-#     fillColor = pal_generator(food_processors)(food_processors$overall),
-#     group = "Food_Processors") %>%
-#   addLegend(
-#     "bottomright", 
-#     pal = pal_generator(natural), 
-#     opacity = 1,
-#     values = natural$overall,
-#     title = HTML('Natural Resources<br>Index Score'),
-#     group = "Natural_Resources",
-#     className = "info legend Natural_Resources"
-#   ) %>%
-#   addLegend(
-#     "bottomright", 
-#     pal = pal_generator(agriculture), 
-#     opacity = 1,
-#     values = agriculture$overall,
-#     title = HTML('Agricultural Resources<br>Index Score'),
-#     group = "Agricultural_Resources",
-#     className = 'info legend Agricultural_Resources') %>%
-#   addLegend(
-#     "bottomright",
-#     pal = pal_generator(financial),
-#     opacity = 1,
-#     values = financial$overall,
-#     title = HTML('Financial Resources<br>Index Score'),
-#     group = "Financial_Resources",
-#     className = "info legend Financial_Resources"
-#     ) %>%
-#   addLegend(
-#     "bottomright",
-#     pal = pal_generator(community_resources),
-#     opacity = 1,
-#     values = community_resources$overall,
-#     title = HTML('Commnunity Resources<br>Index Score'),
-#     group = "Community_Resources",
-#     className = 'info legend Community_Resources') %>%
-#   addLegend(
-#     "bottomright",
-#     pal = pal_generator(food_processors),
-#     opacity = 1,
-#     values = food_processors$overall,
-#     title = HTML('Food Processors<br>Index Score'),
-#     group = "Food_Processors",
-#     className = "info legend Food_Processors") %>%
-#   addLegend(
-#     "bottomright",
-#     pal = pal_generator(infrastructure),
-#     opacity = 1,
-#     values = infrastructure$overall,
-#     title = HTML('Infrastructure<br>Index Score'),
-#     group = "Infrastructure",
-#     className = "info legend Infrastructure") %>%
-#   addLegend(
-#     "bottomright",
-#     pal = pal_generator(food_insecurity),
-#     opacity = 1,
-#     values = food_insecurity$overall,
-#     title = HTML('Food Insecurity<br>Index Score'),
-#     group = "Food_Insecurity",
-#     className = "info legend Food_Insecurity") %>%
-#   addLegend(
-#     "bottomright",
-#     pal = pal_generator(population),
-#     opacity = 1,
-#     values = population$overall,
-#     title = HTML('Population<br>Index Score'),
-#     group = "Population",
-#     className = "info legend Population") %>%
-#   addLayersControl(
-#     baseGroups = c(
-#       "Infrastructure", 
-#       "Food_Insecurity", 
-#       "Population", 
-#       "Food_Processors",
-#       "Community_Resources", 
-#       "Financial_Resources",
-#       "Natural_Resources",
-#       "Agricultural_Resources"
-#     ),
-#     options = layersControlOptions(collapsed = TRUE)
-#   ) %>%
-#     htmlwidgets::onRender(
-#       "
-#         function(el, x) {
-#            var updateLegend = function () {
-#               var selectedGroup = document.querySelectorAll('input:checked')[0].nextSibling.innerText.substr(1);
-#   
-#               document.querySelectorAll('.legend').forEach(a => a.hidden=true);
-#               document.querySelectorAll('.legend').forEach(l => {
-#                  if (l.classList.contains(selectedGroup)) l.hidden=false;
-#               });
-#            };
-#            updateLegend();
-#            this.on('baselayerchange', el => updateLegend());
-#         }"
-#     )
+pal_generator <- function(d, pal = 'RdPu') {
+  return(colorQuantile(palette = pal, domain = d$overall, n = 9))
+}
+
+my_map %>%
+  addPolygons(
+    data = natural,
+    weight = 0.5,
+    color = 'white',
+    fillOpacity = 1,
+    fillColor = pal_generator(natural)(natural$overall),
+    group = "Natural_Resources",
+    ) %>%
+  addPolygons(
+    data = agriculture,
+    weight = 0.5,
+    color = 'white',
+    fillOpacity = 1,
+    fillColor = pal_generator(agriculture)(agriculture$overall),
+    group = "Agricultural_Resources") %>%
+  addPolygons(
+    data = financial,
+    weight = 0.5,
+    color = 'white',
+    fillOpacity = 1,
+    fillColor = pal_generator(financial)(financial$overall),
+    group = "Financial_Resources") %>%
+  addPolygons(
+    data = community_resources,
+    weight = 0.5,
+    color = 'white',
+    fillOpacity = 1,
+    fillColor = pal_generator(community_resources)(community_resources$overall),
+    group = "Community_Resources") %>%
+  addPolygons(
+    data = infrastructure,
+    weight = 0.5,
+    color = 'white',
+    fillOpacity = 1,
+    fillColor = pal_generator(infrastructure)(infrastructure$overall),
+    group = "Infrastructure") %>%
+  addPolygons(
+    data = food_insecurity,
+    weight = 0.5,
+    color = 'white',
+    fillOpacity = 1,
+    fillColor = pal_generator(food_insecurity)(food_insecurity$overall),
+    group = "Food_Insecurity") %>%
+  addPolygons(
+    data = population,
+    weight = 0.5,
+    color = 'white',
+    fillOpacity = 1,
+    fillColor = pal_generator(population)(population$overall),
+    group = "Population") %>%
+  addPolygons(
+    data = food_processors,
+    weight = 0.5,
+    color = 'white',
+    fillOpacity = 1,
+    fillColor = pal_generator(food_processors)(food_processors$overall),
+    group = "Food_Processors") %>%
+  addLegend(
+    "bottomright",
+    pal = pal_generator(natural),
+    opacity = 1,
+    values = natural$overall,
+    title = HTML('Natural Resources<br>Index Score'),
+    group = "Natural_Resources",
+    className = "info legend Natural_Resources"
+  ) %>%
+  addLegend(
+    "bottomright",
+    pal = pal_generator(agriculture),
+    opacity = 1,
+    values = agriculture$overall,
+    title = HTML('Agricultural Resources<br>Index Score'),
+    group = "Agricultural_Resources",
+    className = 'info legend Agricultural_Resources') %>%
+  addLegend(
+    "bottomright",
+    pal = pal_generator(financial),
+    opacity = 1,
+    values = financial$overall,
+    title = HTML('Financial Resources<br>Index Score'),
+    group = "Financial_Resources",
+    className = "info legend Financial_Resources"
+    ) %>%
+  addLegend(
+    "bottomright",
+    pal = pal_generator(community_resources),
+    opacity = 1,
+    values = community_resources$overall,
+    title = HTML('Commnunity Resources<br>Index Score'),
+    group = "Community_Resources",
+    className = 'info legend Community_Resources') %>%
+  addLegend(
+    "bottomright",
+    pal = pal_generator(food_processors),
+    opacity = 1,
+    values = food_processors$overall,
+    title = HTML('Food Processors<br>Index Score'),
+    group = "Food_Processors",
+    className = "info legend Food_Processors") %>%
+  addLegend(
+    "bottomright",
+    pal = pal_generator(infrastructure),
+    opacity = 1,
+    values = infrastructure$overall,
+    title = HTML('Infrastructure<br>Index Score'),
+    group = "Infrastructure",
+    className = "info legend Infrastructure") %>%
+  addLegend(
+    "bottomright",
+    pal = pal_generator(food_insecurity),
+    opacity = 1,
+    values = food_insecurity$overall,
+    title = HTML('Food Insecurity<br>Index Score'),
+    group = "Food_Insecurity",
+    className = "info legend Food_Insecurity") %>%
+  addLegend(
+    "bottomright",
+    pal = pal_generator(population),
+    opacity = 1,
+    values = population$overall,
+    title = HTML('Population<br>Index Score'),
+    group = "Population",
+    className = "info legend Population") %>%
+  addLayersControl(
+    baseGroups = c(
+      "Infrastructure",
+      "Food_Insecurity",
+      "Population",
+      "Food_Processors",
+      "Community_Resources",
+      "Financial_Resources",
+      "Natural_Resources",
+      "Agricultural_Resources"
+    ),
+    options = layersControlOptions(collapsed = TRUE)
+  ) %>%
+    htmlwidgets::onRender(
+      "
+        function(el, x) {
+           var updateLegend = function () {
+              var selectedGroup = document.querySelectorAll('input:checked')[0].nextSibling.innerText.substr(1);
+
+              document.querySelectorAll('.legend').forEach(a => a.hidden=true);
+              document.querySelectorAll('.legend').forEach(l => {
+                 if (l.classList.contains(selectedGroup)) l.hidden=false;
+              });
+           };
+           updateLegend();
+           this.on('baselayerchange', el => updateLegend());
+        }"
+    )
 ```
 
 ### Plot of wealth indices vs Award Amounts
