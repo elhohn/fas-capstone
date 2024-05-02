@@ -150,7 +150,7 @@ subsetter <- function(topic) {
   d$composite <- rescale(d$mean, to = c(0, 100))
   
   d <- counties %>%
-    merge(d, by.x = 'GEOID', by.y = 'fips') %>%
+    merge(d, by = 'fips') %>%
     st_transform(4326) %>%
     st_set_geometry('geometry') %>%
     select(-mean)
@@ -240,19 +240,22 @@ lamp_sf <- lamp %>%
 # Load counties data (downloaded somewhere on the interwebs...)
 counties <- st_read('data/cb_2021_us_county_20m/cb_2021_us_county_20m.shp') %>%
   filter(!STATE_NAME %in% c('Alaska', 'Hawaii', 'Puerto Rico')) %>%
-  rename(county_name = NAMELSAD) %>%
-  select(GEOID, county_name, geometry) %>%
+  rename(
+    county_name = NAMELSAD,
+    fips = GEOID
+    ) %>%
+  select(fips, county_name, geometry) %>%
   #st_set_crs(4326) %>%
   st_transform(4326)
 
 # spatial join points within counties
 lamp_by_county <- counties %>%
   st_join(lamp_sf, join = st_contains, left = TRUE) %>%
-  group_by(GEOID) %>%
+  group_by(fips) %>%
   mutate(total_grant = sum(Award.Amount)) %>%
   mutate(lamp_funded = as.factor(ifelse(is.na(Award.Amount) | Award.Amount == 0, 0, 1))) %>%
   #rename(County = NAMELSAD) %>%
-  select(GEOID, county_name, lamp_funded, Award.Amount)
+  select(fips, county_name, lamp_funded, Award.Amount)
 ```
 
 ##### Distribution of LAMP Grant funding across CONUS
@@ -577,6 +580,67 @@ my_map %>%
   bslib::card(full_screen = TRUE)
 ```
 
+#### Rural vs. urban, and proximity to farmland
+
+##### Exploratory map of rural-urban continuum classification, and proportion of county in agriculture
+
+```{r ruc data grab}
+
+## Urban-rural continuum
+ruc_url <- 'https://www.ers.usda.gov/webdocs/DataFiles/53251/Ruralurbancontinuumcodes2023.xlsx?v=3167.7'
+
+ruc <- read.xlsx(ruc_url) %>%
+  select(FIPS, RUCC_2023, Description) %>%
+  mutate(RUCC_2023 = as.factor(RUCC_2023)) %>%
+  rename(fips = FIPS)
+
+ruc_sf <- counties %>%
+  merge(ruc, by = 'fips') %>%
+  mutate(RUCC_2023 = as.factor(RUCC_2023)) %>%
+  st_transform(4326)
+
+```
+
+```{r ruc and ag land map}
+
+ruc_pal <- colorFactor(
+  palette = as.vector(paletteer_d("MoMAColors::Picabia"))[1:9], 
+  domain = ruc_sf$RUCC_2023)
+
+labels <- sprintf(
+  "<strong>%s</strong><br/>%s",
+  ruc_sf$county_name, ruc_sf$Description
+) %>% lapply(htmltools::HTML)
+
+my_map %>%
+# leaflet(ruc) %>%
+#   addTiles() %>%
+  addPolygons(
+    data = ruc_sf,
+    fillColor = ~ruc_pal(RUCC_2023),
+    color = 'white',
+    opacity = 1,
+    fillOpacity = 1,
+    weight = 0.2,
+    label = labels,
+    labelOptions = labelOptions(
+      style = list("font-weight" = "normal", padding = "3px 8px"),
+      textsize = "15px",
+      direction = "auto")
+  ) %>%
+  addLegend(
+    "bottomright",
+    #pal = ruc_pal,
+    opacity = 1,
+    values = ruc_sf$RUCC_2023,
+    colors = as.vector(paletteer_d("MoMAColors::Picabia"))[1:9],
+    labels = c('Most Urban',"","","","","","","","Most Rural"),
+    title = HTML('Rural-Urban<br>Continuum Class'),
+    group = "RUC",
+    className = "info legend RUC")
+
+```
+
 ```{r combine all data for PCA}
 
 comm_wealth <- comm_wealth_all %>%
@@ -587,12 +651,12 @@ comm_wealth <- comm_wealth_all %>%
   pivot_wider(names_from = variable_name, values_from = value) %>%
   select(-broad_11)
 
-## Urban-rural continuum
-ruc_url <- 'https://www.ers.usda.gov/webdocs/DataFiles/53251/Ruralurbancontinuumcodes2023.xlsx?v=3167.7'
-ruc <- read.xlsx(ruc_url) %>%
-  select(FIPS, RUCC_2023) %>%
-  mutate(RUCC_2023 = as.factor(RUCC_2023)) %>%
-  rename(fips = FIPS)
+# ## Urban-rural continuum
+# ruc_url <- 'https://www.ers.usda.gov/webdocs/DataFiles/53251/Ruralurbancontinuumcodes2023.xlsx?v=3167.7'
+# ruc <- read.xlsx(ruc_url) %>%
+#   select(FIPS, RUCC_2023) %>%
+#   mutate(RUCC_2023 = as.factor(RUCC_2023)) %>%
+#   rename(fips = FIPS)
 
 ## Rural and Underserved designation
 rural_data_url <- 'https://files.consumerfinance.gov/f/documents/cfpb_rural-list_2024.csv'
@@ -905,41 +969,7 @@ reduced_d <- rotated_data %>% rename_at(vars(all_of(oldnames)), ~ newnames)
 This information can be used to control for the location of each county in relation to rural (and potentially agricultural) land.
 
 ```{r ruc data}
-# 
-# ruc_url <- 'https://www.ers.usda.gov/webdocs/DataFiles/53251/Ruralurbancontinuumcodes2023.xlsx?v=3167.7'
-# 
-# ruc <- read.xlsx(ruc_url)
-# 
-# ruc <- counties %>%
-#   merge(ruc,  by.x = 'GEOID', by.y = 'FIPS') %>%
-#   mutate(RUCC_2023 = as.factor(RUCC_2023)) %>%
-#   st_transform(4326)
-# 
-# ruc_colors <- c('#440154', '#472d7b', '#3b528b', '#2c728e', '#21918c', 
-#                   '#28ae80', '#5ec962', '#addc30', '#fde725')
-# ruc_pal <- colorFactor(palette = ruc_colors, domain = ruc$RUCC_2023)
-# 
-# labels <- sprintf(
-#   "<strong>%s</strong><br/>%s",
-#   ruc$NAMELSAD, ruc$Description
-# ) %>% lapply(htmltools::HTML)
-# 
-# my_map %>%
-# # leaflet(ruc) %>%
-# #   addTiles() %>%
-#   addPolygons(
-#     data = ruc,
-#     fillColor = ~ruc_pal(RUCC_2023),
-#     color = 'white',
-#     opacity = 1,
-#     fillOpacity = 1,
-#     weight = 0.2,
-#     label = labels,
-#     labelOptions = labelOptions(
-#       style = list("font-weight" = "normal", padding = "3px 8px"),
-#       textsize = "15px",
-#       direction = "auto")
-#   )
+
   
 ```
 
