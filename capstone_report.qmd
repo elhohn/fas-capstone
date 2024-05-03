@@ -1024,15 +1024,15 @@ d3 <- d3 %>% mutate(value = as.numeric(value))
 
 # Create a scatter plot with facets
 p <- ggplot(d3 %>% filter(variable != "Total LAMP funding") %>% ungroup(),
-            aes(x = award_per_capita,
-                y = value)) +
+            aes(x = value,
+                y = award_per_capita)) +
      geom_point(aes(color = variable#,
                 #text = paste("County:", county_name)
                 ),
                 alpha = 0.7, size = 2) +
      geom_smooth(method = 'lm', se = FALSE, color = 'grey25', linewidth = .4) +
      scale_color_manual(values = ggsci::pal_igv("default")(length(unique(d3$variable))-1)) +
-     facet_wrap(~ variable, ncol = 4, scales = 'free_y') +
+     facet_wrap(~ variable, ncol = 4, scales = 'free_x') +
      labs(title = 'Community Wealth Indices vs LAMP $ Per Capita, 2006-2022',
           x = 'Total Award $ Per Capita, 2006-2022',
           y = '',
