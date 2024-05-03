@@ -866,6 +866,187 @@ for(i in 1:ncol(d)){
 
 ##### Plotting each variable against total LAMP award money received
 
+```{r prepping wealth vs award data}
+
+# join lamp_by_county and individual `overall` scores
+lamp_by_county2 <- lamp_by_county %>%
+  st_drop_geometry()
+
+clean_up <- function(d) {
+  return (d %>%
+          st_drop_geometry() %>%
+          select(fips, overall))
+}
+
+pop_url <- 'https://www.ers.usda.gov/webdocs/DataFiles/48747/PopulationEstimates.csv?v=8269.9'
+
+pop <- read.csv(pop_url) %>%
+  filter(Attribute == 'CENSUS_2020_POP',
+         FIPStxt != 0) %>%
+  select(FIPStxt, Value) %>%
+  rename(
+    population_2020 = Value,
+    fips = FIPStxt
+    )
+
+pop$fips <- sapply(pop$fips, add_leading_zero)
+
+# clean up lamp data and add total county grant $ column before joining
+d2 <- d %>%
+  merge(d_factors, by = 0) %>%
+  rename(fips = Row.names) %>%
+  merge(lamp_by_county2, by = 'fips') %>%
+  merge(pop, by = 'fips') %>%
+  mutate(award_per_capita = Award.Amount / population_2020) %>%
+  select(-population_2020)
+```
+
+```{r wealth vs award scatter plots}
+#| fig-height: 15
+#| fig-width: 10
+#| fig-align: center
+#| out-width: 80%
+
+old_vars <- c(
+  "acre_FSA", 
+  "assn",
+  "broad_16",
+  "conserve_acre",
+  "create_indus",
+  "create_jobs",
+  "ed_attain",
+  "deposits",
+  "est_CBP",
+  "food_secure",
+  "foodbev_est_CBP",
+  "health_factors",
+  "pc1b_manufacturing",
+  "pc1f",
+  "pc1c_artsdiversity",
+  "pc1h_healtheducation",
+  "pc1s_nonprofitsocialindustries",
+  "pc1n_naturalamenitiesconservation",
+  "pc2b_infrastructure",
+  "pc2n_farmland",
+  "pc2s_publicvoiceparticipation",
+  "pc2c_creativeindustries",
+  "pc2h_medicalfoodsecurity",
+  "health_outcomes",
+  "highway_km",
+  "insured",
+  "localgovfin",
+  "museums",
+  "natamen_scale",
+  "nccs",
+  "owner_occupied",
+  "primary_care",
+  "prime_farmland",
+  "pub_lib",
+  "pvote",
+  "racial_div",
+  "respn",
+  "poverty_rate",
+  "ag_proportion",
+  "is_rural",
+  "is_underserved",
+  "RUCC_2023",
+  "Award.Amount",
+  "Acre_NFS"
+  )
+
+new_vars <- c(
+  "Acres in conservation", 
+  "Social establishments",
+  "Broadband access",
+  "Acres under easement",
+  "Creative industry",
+  "Jobs in the arts",
+  "Education levels",
+  "Band deposits",
+  "County business patterns",
+  "Food security",
+  "Food & bev businesses",
+  "Health factors",
+  "pc1b_manufacturing",
+  "pc1f",
+  "pc1c_artsdiversity",
+  "pc1h_healtheducation",
+  "pc1s_nonprofitsocialindustries",
+  "pc1n_naturalamenitiesconservation",
+  "pc2b_infrastructure",
+  "pc2n_farmland",
+  "pc2s_publicvoiceparticipation",
+  "pc2c_creativeindustries",
+  "pc2h_medicalfoodsecurity",
+  "Health outcomes",
+  "Highways",
+  "Insured rate",
+  "Local gov finances",
+  "Museum access",
+  "Natural amenities",
+  "Non-profits",
+  "Home ownership",
+  "Health care access",
+  "Prime farmland",
+  "Public libraries",
+  "Voting rate",
+  "Racial diversity",
+  "Census response rate",
+  "Poverty rate",
+  "Ag land proportion",
+  "Rural status",
+  "Underserved status",
+  "Rural continuum",
+  "Total LAMP $",
+  "National forests"
+  )
+
+d3 <- d2 %>%
+  drop_na() %>%
+  filter(!county_name %in% c('Menominee County', 'Kidder County'))
+
+id_vars <- c('fips', 'county_name', 'lamp_funded', 'award_per_capita')
+measure_vars <- colnames(d2)[!colnames(d2) %in% id_vars]
+
+d3 <- reshape2::melt(
+  d3, id.vars = id_vars,
+  measure.vars = measure_vars)
+
+map = setNames(new_vars, old_vars)
+d3$variable = map[d3$variable]
+
+d3 <- d3 %>% mutate(value = as.numeric(value))
+
+# Create a scatter plot with facets
+p <- ggplot(d3 %>% filter(variable != "Total LAMP $") %>% ungroup(),
+            aes(x = award_per_capita,
+                y = value)) +
+     geom_point(aes(color = variable#,
+                #text = paste("County:", county_name)
+                ),
+                alpha = 0.7, size = 2) +
+     geom_smooth(method = 'lm', se = FALSE, color = 'grey25', linewidth = .4) +
+     scale_color_manual(values = ggsci::pal_igv("default")(length(unique(d3$variable))-1)) +
+     facet_wrap(~ variable, ncol = 4, scales = 'free_y') +
+     labs(title = 'Community Wealth Indices vs LAMP $ Per Capita, 2006-2022',
+          x = 'Total Award $ Per Capita, 2006-2022',
+          y = '',
+          caption = "Note: two counties, Menominee County (Michigan) and Kidder County (North Dakota), were removed from the dataset used for this plot because they were identified as outliers.") +
+     #ylim(0, 1) +
+     theme_minimal() +
+     theme(
+       legend.position = "none",
+       strip.background = element_rect(fill="#2F414BFF"),
+       strip.text = element_text(color = 'grey76', face = 'bold')
+     )
+
+# Convert ggplot object to plotly for interactivity
+p
+#ggplotly(p, tooltip = "text") %>% config(displayModeBar = FALSE)
+```
+
+### 
+
 ### Dimension reduction with PCA
 
 Started with 44 variables, which were reduced to 10 using a principal components analysis.
@@ -991,120 +1172,6 @@ reduced_d <- rotated_data %>% rename_at(vars(all_of(oldnames)), ~ newnames)
 ```
 
 ```         
-```
-
-### Plot of wealth indices vs Award Amounts
-
-```{r prepping wealth vs award data}
-
-# join lamp_by_county and individual `overall` scores
-lamp_by_county2 <- lamp_by_county %>%
-  st_drop_geometry()
-
-clean_up <- function(d) {
-  return (d %>%
-          st_drop_geometry() %>%
-          select(fips, overall))
-}
-
-pop_url <- 'https://www.ers.usda.gov/webdocs/DataFiles/48747/PopulationEstimates.csv?v=8269.9'
-
-pop <- read.csv(pop_url) %>%
-  filter(Attribute == 'CENSUS_2020_POP',
-         FIPStxt != 0) %>%
-  select(FIPStxt, Value) %>%
-  rename(
-    population_2020 = Value,
-    fips = FIPStxt
-    )
-
-pop$fips <- sapply(pop$fips, add_leading_zero)
-
-# clean up lamp data and add total county grant $ column before joining
-d2 <- d %>%
-  merge(lamp_by_county2, by.x = 0, by.y = 'fips') %>%
-  rename(fips = Row.names) %>%
-  merge(pop, by = 'fips') %>%
-  mutate(award_per_capita = Award.Amount / population_2020) %>%
-  select(-population_2020)
-```
-
-```{r wealth vs award scatter plots}
-#| fig-height: 15
-#| fig-width: 10
-#| fig-align: center
-#| out-width: 80%
-
-old_vars <- c(
-  "acre_FSA", 
-  "assn",
-  "broad_16",
-  "conserve_acre",
-  "create_indus",
-  "create_jobs"
-  )
-
-new_vars <- c(
-  "% of acres in conservation", 
-  "Social establishments",
-  "Broadband access",
-  "% of acres under easement",
-  "Creative industry",
-  "Jobs in the arts"
-  )
-
-                      "deposits"
-[10] "ed_attain"                         "est_CBP"                           "food_secure"
-[13] "foodbev_est_CBP"                   "health_factors"                    "health_outcomes"
-[16] "highway_km"                        "insured"                           "localgovfin"
-[19] "museums"                           "natamen_scale"                     "nccs"
-[22] "owner_occupied"                    "pc1b_manufacturing"                "pc1c_artsdiversity"
-[25] "pc1f"                              "pc1h_healtheducation"              "pc1n_naturalamenitiesconservation"
-[28] "pc1s_nonprofitsocialindustries"    "pc2b_infrastructure"               "pc2c_creativeindustries"
-[31] "pc2h_medicalfoodsecurity"          "pc2n_farmland"                     "pc2s_publicvoiceparticipation"
-[34] "primary_care"                      "prime_farmland"                    "pub_lib"
-[37] "pvote"                             "racial_div"                        "respn"
-[40] "poverty_rate"                      "ag_proportion"
-
-)
-
-d3 <- d2 %>%
-  drop_na() %>%
-  filter(!county_name %in% c('Menominee County', 'Kidder County'))
-
-id_vars <- c('fips', 'county_name', 'lamp_funded', 'award_per_capita')
-measure_vars <- colnames(d2)[!colnames(d2) %in% id_vars]
-
-d3 <- reshape2::melt(
-  d3, id.vars = id_vars,
-  measure.vars = measure_vars)
-
-# Create a scatter plot with facets
-p <- ggplot(d3 %>% filter(variable != "Award.Amount") %>% ungroup(),
-            aes(x = award_per_capita,
-                y = value)) +
-     geom_point(aes(color = variable#,
-                #text = paste("County:", county_name)
-                ),
-                alpha = 0.7, size = 2) +
-     geom_smooth(method = 'lm', se = FALSE, color = 'grey25', linewidth = .4) +
-     scale_color_manual(values = ggsci::pal_igv("default")(length(unique(d3$variable)-1))) +
-     facet_wrap(~ variable, ncol = 4, scales = 'free_y') +
-     labs(title = 'Community Wealth Indices vs LAMP $ Per Capita, 2006-2022',
-          x = 'Total Award $ Per Capita, 2006-2022',
-          y = '',
-          caption = "Note: two counties, Menominee County (Michigan) and Kidder County (North Dakota), were removed from the dataset used for this plot because they were identified as outliers.") +
-     #ylim(0, 1) +
-     theme_minimal() +
-     theme(
-       legend.position = "none",
-       strip.background = element_rect(fill="#2F414BFF"),
-       strip.text = element_text(color = 'grey76', face = 'bold')
-     )
-
-# Convert ggplot object to plotly for interactivity
-p
-#ggplotly(p, tooltip = "text") %>% config(displayModeBar = FALSE)
 ```
 
 ### Urban-Rural continuum data
