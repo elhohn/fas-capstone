@@ -330,6 +330,22 @@
       ],
       "Hash": "543776ae6848fde2f48ff3816d0628bc"
     },
+    "bayestestR": {
+      "Package": "bayestestR",
+      "Version": "0.13.2",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "R",
+        "datawizard",
+        "graphics",
+        "insight",
+        "methods",
+        "stats",
+        "utils"
+      ],
+      "Hash": "4a6a2eebe2db1dfb1c792c4ed91e73dc"
+    },
     "biscale": {
       "Package": "biscale",
       "Version": "1.0.0",
@@ -799,6 +815,19 @@
         "methods"
       ],
       "Hash": "8ee9ac56ef633d0c7cab8b2ca87d683e"
+    },
+    "datawizard": {
+      "Package": "datawizard",
+      "Version": "0.10.0",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "R",
+        "insight",
+        "stats",
+        "utils"
+      ],
+      "Hash": "62d6ec10346d3302a1299e1c54641d83"
     },
     "dbplyr": {
       "Package": "dbplyr",
@@ -1614,6 +1643,19 @@
       ],
       "Hash": "99df65cfef20e525ed38c3d2577f7190"
     },
+    "insight": {
+      "Package": "insight",
+      "Version": "0.19.10",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "R",
+        "methods",
+        "stats",
+        "utils"
+      ],
+      "Hash": "c15a38c9655cba66f5f5537a14c1bef4"
+    },
     "ipred": {
       "Package": "ipred",
       "Version": "0.9-14",
@@ -2170,6 +2212,23 @@
         "utils"
       ],
       "Hash": "5410df8d22bd36e616f2a2343dbb328c"
+    },
+    "parameters": {
+      "Package": "parameters",
+      "Version": "0.21.6",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "R",
+        "bayestestR",
+        "datawizard",
+        "graphics",
+        "insight",
+        "methods",
+        "stats",
+        "utils"
+      ],
+      "Hash": "1f1bf75cb49c61df8287a0fa3b68126f"
     },
     "pbkrtest": {
       "Package": "pbkrtest",
