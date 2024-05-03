@@ -905,7 +905,7 @@ d2 <- d %>%
 #| fig-height: 15
 #| fig-width: 10
 #| fig-align: center
-#| out-width: 80%
+#| out-width: 100%
 
 old_vars <- c(
   "acre_FSA", 
@@ -1049,8 +1049,6 @@ p
 
 ```
 
-### 
-
 ### Dimension reduction with PCA
 
 Started with 44 variables, which were reduced to 10 using a principal components analysis.
@@ -1059,6 +1057,7 @@ Started with 44 variables, which were reduced to 10 using a principal components
 #| fig-align: center
 #| fig-width: 10
 #| fig-height: 15
+#| out-width: 100%
 
 ## PCA v2
 res.pca <- prcomp(d, scale = TRUE)
@@ -1081,19 +1080,111 @@ k <- length(eig_vals[eig_vals >= 1])
 #              )
 
 # Contributions of variables to PCs 1 to 10
-p1 <- fviz_contrib(res.pca, choice = "var", axes = 1, top = 10)
-p2 <- fviz_contrib(res.pca, choice = "var", axes = 2, top = 10)
-p3 <- fviz_contrib(res.pca, choice = "var", axes = 3, top = 10)
-p4 <- fviz_contrib(res.pca, choice = "var", axes = 4, top = 10)
-p5 <- fviz_contrib(res.pca, choice = "var", axes = 5, top = 10)
-p6 <- fviz_contrib(res.pca, choice = "var", axes = 6, top = 10)
-p7 <- fviz_contrib(res.pca, choice = "var", axes = 7, top = 10)
-p8 <- fviz_contrib(res.pca, choice = "var", axes = 8, top = 10)
-p9 <- fviz_contrib(res.pca, choice = "var", axes = 9, top = 10)
-p10 <- fviz_contrib(res.pca, choice = "var", axes = 10, top = 10)
+p1 <- fviz_contrib(res.pca, choice = "var", axes = 1, top = 10, sort.val = 'asc',
+                   fill = "#FEB893", color = "#25282AFF", linewidth = 5,
+                   width = 0.4) +
+  theme_minimal() + coord_flip() +
+  theme(axis.text.x = element_text(size=4),
+        axis.title.x=element_blank(),
+        axis.ticks.x=element_blank(),
+        axis.title.y=element_blank(),
+        axis.ticks.y=element_blank()
+        )
+p2 <- fviz_contrib(res.pca, choice = "var", axes = 2, top = 10, sort.val = 'asc',
+                   fill = "#FEB893", color = "#25282AFF", linewidth = 5,
+                   width = 0.4) + 
+  theme_minimal() + coord_flip() +
+  theme(axis.text.x = element_text(size=4),
+        axis.title.x=element_blank(),
+        axis.ticks.x=element_blank(),
+        axis.title.y=element_blank(),
+        axis.ticks.y=element_blank()
+        )
+p3 <- fviz_contrib(res.pca, choice = "var", axes = 3, top = 10, sort.val = 'asc',
+                   fill = "#FEB893", color = "#25282AFF", stroke = 10,
+                   width = 0.4) + 
+  theme_minimal() + coord_flip() +
+  theme(axis.text.x = element_text(size=4),
+        axis.title.x=element_blank(),
+        axis.ticks.x=element_blank(),
+        axis.title.y=element_blank(),
+        axis.ticks.y=element_blank()
+        )
+p4 <- fviz_contrib(res.pca, choice = "var", axes = 4, top = 10, sort.val = 'asc',
+                   fill = "#FEB893", color = "#25282AFF", linewidth = 5,
+                   width = 0.4) + 
+  theme_minimal() + coord_flip() +
+  theme(axis.text.x = element_text(size=4),
+        axis.title.x=element_blank(),
+        axis.ticks.x=element_blank(),
+        axis.title.y=element_blank(),
+        axis.ticks.y=element_blank()
+        )
+p5 <- fviz_contrib(res.pca, choice = "var", axes = 5, top = 10, sort.val = 'asc',
+                   fill = "#FEB893", color = "#25282AFF", linewidth = 5,
+                   width = 0.4) + 
+  theme_minimal() + coord_flip() +
+  theme(axis.text.x = element_text(size=4),
+        axis.title.x=element_blank(),
+        axis.ticks.x=element_blank(),
+        axis.title.y=element_blank(),
+        axis.ticks.y=element_blank()
+        )
+p6 <- fviz_contrib(res.pca, choice = "var", axes = 6, top = 10, sort.val = 'asc',
+                   fill = "#FEB893", color = "#25282AFF", linewidth = 5,
+                   width = 0.4) + 
+  theme_minimal() + coord_flip() +
+  theme(axis.text.x = element_text(size=4),
+        axis.title.x=element_blank(),
+        axis.ticks.x=element_blank(),
+        axis.title.y=element_blank(),
+        axis.ticks.y=element_blank()
+        )
+p7 <- fviz_contrib(res.pca, choice = "var", axes = 7, top = 10, sort.val = 'asc',
+                   fill = "#FEB893", color = "#25282AFF", linewidth = 5,
+                   width = 0.4) + 
+  theme_minimal() + coord_flip() +
+  theme(axis.text.x = element_text(size=4),
+        axis.title.x=element_blank(),
+        axis.ticks.x=element_blank(),
+        axis.title.y=element_blank(),
+        axis.ticks.y=element_blank()
+        )
+p8 <- fviz_contrib(res.pca, choice = "var", axes = 8, top = 10, sort.val = 'asc',
+                   fill = "#FEB893", color = "#25282AFF", linewidth = 5,
+                   width = 0.4) + 
+  theme_minimal() + coord_flip() +
+  theme(axis.text.x = element_text(size=4),
+        axis.title.x=element_blank(),
+        axis.ticks.x=element_blank(),
+        axis.title.y=element_blank(),
+        axis.ticks.y=element_blank()
+        )
+p9 <- fviz_contrib(res.pca, choice = "var", axes = 9, top = 10, sort.val = 'asc',
+                   fill = "#FEB893", color = "#25282AFF", linewidth = 5,
+                   width = 0.4) + 
+  theme_minimal() + coord_flip() +
+  theme(axis.text.x = element_text(size=4),
+        axis.title.x=element_blank(),
+        axis.ticks.x=element_blank(),
+        axis.title.y=element_blank(),
+        axis.ticks.y=element_blank()
+        )
+p10 <- fviz_contrib(res.pca, choice = "var", axes = 10, top = 10, sort.val = 'asc',
+                   fill = "#FEB893", color = "#25282AFF", linewidth = 5,
+                   width = 0.4) + 
+  theme_minimal() + coord_flip() +
+  theme(axis.text.x = element_text(size=4),
+        axis.title.x=element_blank(),
+        axis.ticks.x=element_blank(),
+        axis.title.y=element_blank(),
+        axis.ticks.y=element_blank()
+        )
 ggarrange(p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, 
           ncol=2, nrow=5, heights = c(100, 100),
-          font.label = list(size = 6, color = "black", face = "bold", family = 'Roboto')
+          #font.label = list(size = 6, color = "black", face = "bold", family = 'Roboto'),
+          align = 'hv',
+          label.x = '', label.y = ''
 )
 
 eigenvectors <- res.pca$rotation
