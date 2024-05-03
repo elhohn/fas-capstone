@@ -1033,6 +1033,40 @@ d2 <- d %>%
 #| fig-height: 15
 #| fig-width: 10
 #| fig-align: center
+#| out-width: 80%
+
+old_vars <- c(
+  "acre_FSA", 
+  "assn",
+  "broad_16",
+  "conserve_acre",
+  "create_indus",
+  "create_jobs"
+  )
+
+new_vars <- c(
+  "% of acres in conservation", 
+  "Social establishments",
+  "Broadband access",
+  "% of acres under easement",
+  "Creative industry",
+  "Jobs in the arts"
+  )
+
+                      "deposits"
+[10] "ed_attain"                         "est_CBP"                           "food_secure"
+[13] "foodbev_est_CBP"                   "health_factors"                    "health_outcomes"
+[16] "highway_km"                        "insured"                           "localgovfin"
+[19] "museums"                           "natamen_scale"                     "nccs"
+[22] "owner_occupied"                    "pc1b_manufacturing"                "pc1c_artsdiversity"
+[25] "pc1f"                              "pc1h_healtheducation"              "pc1n_naturalamenitiesconservation"
+[28] "pc1s_nonprofitsocialindustries"    "pc2b_infrastructure"               "pc2c_creativeindustries"
+[31] "pc2h_medicalfoodsecurity"          "pc2n_farmland"                     "pc2s_publicvoiceparticipation"
+[34] "primary_care"                      "prime_farmland"                    "pub_lib"
+[37] "pvote"                             "racial_div"                        "respn"
+[40] "poverty_rate"                      "ag_proportion"
+
+)
 
 d3 <- d2 %>%
   drop_na() %>%
@@ -1062,7 +1096,11 @@ p <- ggplot(d3 %>% filter(variable != "Award.Amount") %>% ungroup(),
           caption = "Note: two counties, Menominee County (Michigan) and Kidder County (North Dakota), were removed from the dataset used for this plot because they were identified as outliers.") +
      #ylim(0, 1) +
      theme_minimal() +
-     theme(legend.position = "none")
+     theme(
+       legend.position = "none",
+       strip.background = element_rect(fill="#2F414BFF"),
+       strip.text = element_text(color = 'grey76', face = 'bold')
+     )
 
 # Convert ggplot object to plotly for interactivity
 p
