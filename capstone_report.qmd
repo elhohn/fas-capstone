@@ -1267,7 +1267,7 @@ fviz_nbclust(df_scaled, kmeans, method = "wss", k.max = 20) +
 # print(n_clust)
 
 km <- kmeans(df_scaled, centers = 11) # centers specify number of clusters
-km
+#km
 fviz_cluster(km, df_scaled, ggtheme = theme_minimal())
 
 # print(result$All.index)
@@ -1322,23 +1322,32 @@ clustered_melted <- reshape2::melt(
 #   group_by(variable, cluster) %>%
 #   summarize(mean = mean(value))
 
-p <- ggplot(clustered_melted, aes(cluster, value), shape = 21) +
-  geom_jitter(
-    aes(color = factor(lamp_funded),
-        fill = factor(cluster)),
-    shape=21, size = 1, alpha = 0.5, stroke = 0.9) +
-  scale_fill_manual(values = as.vector(paletteer_d("rcartocolor::Prism"))[1:length(unique(clustered_melted$cluster))]) +
+p <- ggplot(clustered_melted, 
+            aes(x=cluster, y=value), 
+            shape = 21) +
+  geom_jitter(aes(color = factor(lamp_funded), fill = factor(cluster)),
+              shape=21, size = 1, alpha = 0.5, stroke = 0.4) +
+  geom_boxplot(aes(group = cluster), fill = 'transparent',
+               outlier.color = 'darkred', outlier.shape = 4) +
+  scale_fill_manual(
+    values = as.vector(paletteer_d("rcartocolor::Prism"))[1:length(unique(clustered_melted$cluster))]) +
   scale_colour_manual(
     values=c("transparent", "darkgreen"),
     labels = c("Did not receive\nLAMP funding", "Received\nLAMP funding")) +
-  facet_wrap(~ variable, ncol = 2, scales = 'free_y') +
-  theme_minimal() #+
-  labs(title="County-level Social Capital Index, by cluster",
+  facet_wrap(~ variable, ncol = 4, nrow = 3, scales = 'free_y') +
+  #theme_minimal() +
+  labs(title="County-level principal component values, by cluster",
        x ="Social Capital Cluster", y = "Social Capital Index",
        color = "") +
-  theme(legend.position="top")
+  theme(
+    legend.position="none",
+    strip.background = element_rect(fill="#2F414BFF"),
+    strip.text = element_text(color = 'grey76', face = 'bold')
+  )
 
 p
+
+ggsave("cluster_plot.png", plot = p, width = 5000, height = 2200, units = 'px')
 ```
 
 ### Dimension reduction
@@ -1347,26 +1356,73 @@ Use principal component analysis (PCA) to reduce dimensionality of datasets and 
 
 ## Regression
 
-```{r regression analysis}
+```{r regression analysis all vars}
 
-# test <- df %>%
-#   merge(select(lamp_by_county, c(GEOID, lamp_funded)), by = 'GEOID') %>%
-#   st_drop_geometry() %>%
-#   select(-geometry)
-#   
-# # start with just a few variables as predictors
-# predictors <- names(test)[names(test) != 'lamp_funded']
-# 
-# # Prepare the model formula
-# denyprobit <- glm(paste("lamp_funded ~", paste(predictors[1:5], collapse = " + ")),
-#                   family = binomial(link = "probit"), 
-#                   data = test)
-# 
-# coeftest(denyprobit, vcov. = vcovHC, type = "HC1")
-# 
-# denylogit <- glm(lamp_funded ~ soc_cap_index, # + soc_cap_cluster, # + RUCC_2023, 
-#                  family = binomial(link = "logit"), 
-#                  data = df)
-# 
-# coeftest(denylogit, vcov. = vcovHC, type = "HC1")
+# Use dataset with all og data plus factors and lamp grant data
+d_reg <- d %>%
+  merge(d_factors, by = 0) %>%
+  rename(fips = Row.names) %>%
+  merge(lamp_by_county2, by = 'fips') %>%
+  merge(pop, by = 'fips') %>%
+  mutate(award_per_capita = Award.Amount / population_2020) %>%
+  select(-c(population_2020, county_name)) %>%
+  mutate(
+    Award.Amount = ifelse(is.na(Award.Amount), 0, Award.Amount),
+    award_per_capita = ifelse(is.na(award_per_capita), 0, award_per_capita)
+  )
+
+# start with just a few variables as predictors
+predictors <- names(d_reg)[!names(d_reg) %in% c('fips', 'lamp_funded', 'Award.Amount', 'award_per_capita')]
+
+# Prepare the model formula
+denyprobit <- glm(paste("lamp_funded ~", paste(predictors, collapse = " + ")),
+                  family = binomial(link = "probit"),
+                  data = d_reg)
+
+coeftest(denyprobit, vcov. = vcovHC, type = "HC1")
+
+denylogit <- glm(paste("lamp_funded ~", paste(predictors, collapse = " + ")),
+                 family = binomial(link = "logit"),
+                 data = d_reg)
+
+coeftest(denylogit, vcov. = vcovHC, type = "HC1")
+```
+
+```{r logit and probit regression pcs}
+
+# Use dataset with all og data plus factors and lamp grant data
+d_reg_pc <- reduced_d %>%
+  merge(d_factors, by = 0) %>%
+  rename(fips = Row.names) %>%
+  merge(lamp_by_county2, by = 'fips') %>%
+  merge(pop, by = 'fips') %>%
+  mutate(award_per_capita = Award.Amount / population_2020) %>%
+  select(-c(population_2020, county_name)) %>%
+  mutate(
+    Award.Amount = ifelse(is.na(Award.Amount), 0, Award.Amount),
+    award_per_capita = ifelse(is.na(award_per_capita), 0, award_per_capita)
+  )
+
+# start with just a few variables as predictors
+predictors <- names(d_reg_pc)[!names(d_reg_pc) %in% c('fips', 'lamp_funded', 'Award.Amount', 'award_per_capita')]
+
+# Prepare the model formula
+denyprobit <- glm(paste("lamp_funded ~", paste(predictors, collapse = " + ")),
+                  family = binomial(link = "probit"),
+                  data = d_reg_pc)
+
+coeftest(denyprobit, vcov. = vcovHC, type = "HC1")
+
+denylogit <- glm(paste("lamp_funded ~", paste(predictors, collapse = " + ")),
+                 family = binomial(link = "logit"),
+                 data = d_reg_pc)
+
+r <- coeftest(denylogit, vcov. = vcovHC, type = "HC1")
+r <- data.frame(r)
+```
+
+```{r linear regression}
+
+
+
 ```
