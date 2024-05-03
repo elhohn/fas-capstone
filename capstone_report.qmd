@@ -997,9 +997,12 @@ new_vars <- c(
   "Rural status",
   "Underserved status",
   "Rural continuum",
-  "Total LAMP $",
+  "Total LAMP funding",
   "National forests"
   )
+
+var_map <- bind_cols(old_vars, new_vars)
+names(var_map) <- c("old_vars", "new_vars")
 
 d3 <- d2 %>%
   drop_na() %>%
@@ -1012,13 +1015,15 @@ d3 <- reshape2::melt(
   d3, id.vars = id_vars,
   measure.vars = measure_vars)
 
-map = setNames(new_vars, old_vars)
-d3$variable = map[d3$variable]
+d3 <- d3 %>%
+  merge(var_map, by.x = 'variable', by.y = 'old_vars') %>%
+  select(-variable) %>%
+  rename(variable = new_vars)
 
 d3 <- d3 %>% mutate(value = as.numeric(value))
 
 # Create a scatter plot with facets
-p <- ggplot(d3 %>% filter(variable != "Total LAMP $") %>% ungroup(),
+p <- ggplot(d3 %>% filter(variable != "Total LAMP funding") %>% ungroup(),
             aes(x = award_per_capita,
                 y = value)) +
      geom_point(aes(color = variable#,
@@ -1040,9 +1045,8 @@ p <- ggplot(d3 %>% filter(variable != "Total LAMP $") %>% ungroup(),
        strip.text = element_text(color = 'grey76', face = 'bold')
      )
 
-# Convert ggplot object to plotly for interactivity
 p
-#ggplotly(p, tooltip = "text") %>% config(displayModeBar = FALSE)
+
 ```
 
 ### 
