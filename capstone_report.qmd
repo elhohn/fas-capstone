@@ -1081,7 +1081,7 @@ k <- length(eig_vals[eig_vals >= 1])
 
 # Contributions of variables to PCs 1 to 10
 p1 <- fviz_contrib(res.pca, choice = "var", axes = 1, top = 10, sort.val = 'asc',
-                   fill = "#FEB893", color = "#25282AFF", linewidth = 5,
+                   fill = "#FEB893", color = "transparent", linewidth = 5,
                    width = 0.4) +
   theme_minimal() + coord_flip() +
   theme(axis.text.x = element_text(size=4),
@@ -1091,7 +1091,7 @@ p1 <- fviz_contrib(res.pca, choice = "var", axes = 1, top = 10, sort.val = 'asc'
         axis.ticks.y=element_blank()
         )
 p2 <- fviz_contrib(res.pca, choice = "var", axes = 2, top = 10, sort.val = 'asc',
-                   fill = "#FEB893", color = "#25282AFF", linewidth = 5,
+                   fill = "#FEB893", color = "transparent", linewidth = 5,
                    width = 0.4) + 
   theme_minimal() + coord_flip() +
   theme(axis.text.x = element_text(size=4),
@@ -1101,7 +1101,7 @@ p2 <- fviz_contrib(res.pca, choice = "var", axes = 2, top = 10, sort.val = 'asc'
         axis.ticks.y=element_blank()
         )
 p3 <- fviz_contrib(res.pca, choice = "var", axes = 3, top = 10, sort.val = 'asc',
-                   fill = "#FEB893", color = "#25282AFF", stroke = 10,
+                   fill = "#FEB893", color = "transparent", stroke = 10,
                    width = 0.4) + 
   theme_minimal() + coord_flip() +
   theme(axis.text.x = element_text(size=4),
@@ -1111,7 +1111,7 @@ p3 <- fviz_contrib(res.pca, choice = "var", axes = 3, top = 10, sort.val = 'asc'
         axis.ticks.y=element_blank()
         )
 p4 <- fviz_contrib(res.pca, choice = "var", axes = 4, top = 10, sort.val = 'asc',
-                   fill = "#FEB893", color = "#25282AFF", linewidth = 5,
+                   fill = "#FEB893", color = "transparent", linewidth = 5,
                    width = 0.4) + 
   theme_minimal() + coord_flip() +
   theme(axis.text.x = element_text(size=4),
@@ -1121,7 +1121,7 @@ p4 <- fviz_contrib(res.pca, choice = "var", axes = 4, top = 10, sort.val = 'asc'
         axis.ticks.y=element_blank()
         )
 p5 <- fviz_contrib(res.pca, choice = "var", axes = 5, top = 10, sort.val = 'asc',
-                   fill = "#FEB893", color = "#25282AFF", linewidth = 5,
+                   fill = "#FEB893", color = "transparent", linewidth = 5,
                    width = 0.4) + 
   theme_minimal() + coord_flip() +
   theme(axis.text.x = element_text(size=4),
@@ -1131,7 +1131,7 @@ p5 <- fviz_contrib(res.pca, choice = "var", axes = 5, top = 10, sort.val = 'asc'
         axis.ticks.y=element_blank()
         )
 p6 <- fviz_contrib(res.pca, choice = "var", axes = 6, top = 10, sort.val = 'asc',
-                   fill = "#FEB893", color = "#25282AFF", linewidth = 5,
+                   fill = "#FEB893", color = "transparent", linewidth = 5,
                    width = 0.4) + 
   theme_minimal() + coord_flip() +
   theme(axis.text.x = element_text(size=4),
@@ -1141,7 +1141,7 @@ p6 <- fviz_contrib(res.pca, choice = "var", axes = 6, top = 10, sort.val = 'asc'
         axis.ticks.y=element_blank()
         )
 p7 <- fviz_contrib(res.pca, choice = "var", axes = 7, top = 10, sort.val = 'asc',
-                   fill = "#FEB893", color = "#25282AFF", linewidth = 5,
+                   fill = "#FEB893", color = "transparent", linewidth = 5,
                    width = 0.4) + 
   theme_minimal() + coord_flip() +
   theme(axis.text.x = element_text(size=4),
@@ -1151,7 +1151,7 @@ p7 <- fviz_contrib(res.pca, choice = "var", axes = 7, top = 10, sort.val = 'asc'
         axis.ticks.y=element_blank()
         )
 p8 <- fviz_contrib(res.pca, choice = "var", axes = 8, top = 10, sort.val = 'asc',
-                   fill = "#FEB893", color = "#25282AFF", linewidth = 5,
+                   fill = "#FEB893", color = "transparent", linewidth = 5,
                    width = 0.4) + 
   theme_minimal() + coord_flip() +
   theme(axis.text.x = element_text(size=4),
@@ -1161,7 +1161,7 @@ p8 <- fviz_contrib(res.pca, choice = "var", axes = 8, top = 10, sort.val = 'asc'
         axis.ticks.y=element_blank()
         )
 p9 <- fviz_contrib(res.pca, choice = "var", axes = 9, top = 10, sort.val = 'asc',
-                   fill = "#FEB893", color = "#25282AFF", linewidth = 5,
+                   fill = "#FEB893", color = "transparent", linewidth = 5,
                    width = 0.4) + 
   theme_minimal() + coord_flip() +
   theme(axis.text.x = element_text(size=4),
@@ -1171,7 +1171,7 @@ p9 <- fviz_contrib(res.pca, choice = "var", axes = 9, top = 10, sort.val = 'asc'
         axis.ticks.y=element_blank()
         )
 p10 <- fviz_contrib(res.pca, choice = "var", axes = 10, top = 10, sort.val = 'asc',
-                   fill = "#FEB893", color = "#25282AFF", linewidth = 5,
+                   fill = "#FEB893", color = "transparent", linewidth = 5,
                    width = 0.4) + 
   theme_minimal() + coord_flip() +
   theme(axis.text.x = element_text(size=4),
