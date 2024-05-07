@@ -1060,8 +1060,8 @@ p <- ggplot(d3 %>% filter(variable != "Total LAMP funding") %>% ungroup(),
      geom_smooth(method = 'lm', se = FALSE, color = 'grey25', linewidth = .4) +
      scale_color_manual(values = ggsci::pal_igv("default")(length(unique(d3$variable))-1)) +
      facet_wrap(~ variable, ncol = 6, scales = 'free_x') +
-     labs(title = 'Community Wealth Indices vs LAMP $ Per Capita, 2006-2022',
-          x = 'Total Award $ Per Capita, 2006-2022',
+     labs(title = 'Community Wealth Indices vs LAMP $ Per Capita, 2016-2022',
+          x = 'Total Award $ Per Capita, 2016-2022',
           y = '',
           caption = "Note: two counties, Menominee County (Michigan) and Kidder County (North Dakota), were removed from the dataset used for this plot because they were identified as outliers."
           ) +
