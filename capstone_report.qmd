@@ -1,7 +1,7 @@
 ---
 title: "Analyzing the Role of Community and Individual Factors in LAMP Grant Funding: Identifying Diverse Barriers Across Clustered US Counties"
 subtitle: "FAS Food Systems Impact Fellowship Capstone Project, April 2024"
-author: "Elliot Hohn, Sr. Agricultural Data Scientist Impact Fellow"
+author: "Elliot Hohn\nSr. Agricultural Data Scientist Impact Fellow"
 execute:
   echo: false
   warning: false
@@ -11,69 +11,13 @@ format:
     fontsize: 1.1em
     linestretch: 1.7
     mainfont: avenir
+    max-width: 2400px
+    margin-left: 0px
+    margin-right: 0px
     #page-layout: custom
 fig-align: center
 editor: visual
-#server: shiny
 ---
-
-## Introduction
-
-### Local Agriculture Market Program (LAMP)
-
-The USDA's Agricultural Marketing Service (AMS) administers a variety of grant programs aimed at strengthening local and regional food systems. The Local Agriculture Market Program (LAMP) is one such program that supports direct producer-to-consumer marketing, food enterprises, and value-added agricultural products. Established under the 2018 Farm Bill, LAMP fosters community collaboration and public-private partnerships to improve regional food economies, aiding in the development of business strategies and infrastructure for local food systems.
-
-![Promotional materials for LAMP. Image: USDA-AMS, 2024](img/LAMP%20Twitter.png){fig-align="center"}
-
-### Building community capital through food systems investment
-
-#### Theory of Change
-
-According to AMS, the main goals of the LAMP program include the following[^1]:
-
-[^1]: <https://www.ams.usda.gov/services/grants/lamp>. Accessed April 20, 2024
-
--   Simplify the application processes and the reporting processes for the Program
-
--   Improve income and economic opportunities for producers and food businesses through job creation
-
--   Strengthen capacity and regional food system development through community collaboration and expansion of mid-tier value chains
-
-#### Targeting / prioritizing funding
-
-In 2021, AMS partnered with Florida A&M University and the University of Maryland Eastern Shore on a project focusing on the following goals[^2]:
-
-[^2]: <https://www.ams.usda.gov/sites/default/files/media/MSDUSDAAMSGrantApplicantTASociallyDisadvantaged.pdf>
-
-1.  Evaluate barriers to AMS grant opportunities for socially disadvantaged communities
-
-2.  Invest in building trust and confidence between these communities and the USDA
-
-3.  Take action to rectify inequalities in program access through targeted outreach, training, and technical assistance.
-
-(something here about the history of discrimination in USDA programs, sowing mistrust among these communities, and potential hesitancy to partner with USDA on programs like LAMP.
-
-### Goal of this project
-
--   Analyze the data to see if there are relationships between community characteristics and likelihood of receiving LAMP funding
-
--   Generate actionable insights into improving LAMP grant targeting, identify
-
-### Caveats and such
-
--   Temporal component -
-
--   Does not include data on who applied, in addition to who was funded.
-
-### Best practices, current innovation, and policy proposals
-
-(Identify and discuss successful program and policy models, emerging and innovative approaches, or other proposed interventions relevant to the issue area.)
-
-## Objectives of this research
-
-## Methods
-
-(TBD)
 
 ```{r environment setup}
 #| include: false
@@ -187,23 +131,79 @@ pca_prep <- function(d){
 # }
 ```
 
+## Introduction
+
 ### Local Agriculture Market Program (LAMP)
 
-The LAMP program's main goals[^3] are:
+The USDA's Agricultural Marketing Service (AMS) administers a variety of grant programs aimed at strengthening local and regional food systems. The Local Agriculture Market Program (LAMP) is one such program that supports direct producer-to-consumer marketing, food enterprises, and value-added agricultural products. Established under the 2018 Farm Bill, LAMP fosters community collaboration and public-private partnerships to improve regional food economies, aiding in the development of business strategies and infrastructure for local food systems. The Farm Bill provided LAMP \$50 million per year in mandatory funding and the programs received significant supplemental funding through the Consolidated Appropriations Act of 2021 and the American Rescue Plan of 2021.[^1] The major grant programs within LAMP include the [Local Food Promotion Program (LFPP)](https://www.ams.usda.gov/services/grants/lfpp), [Regional Food Systems Partnership (RFSP)](https://www.ams.usda.gov/services/grants/rfsp), and the [Farmers Market Promotion Program (FMPP)](https://www.ams.usda.gov/services/grants/fmpp).
 
-[^3]: <https://www.ams.usda.gov/services/grants/lamp>
+[^1]: <https://www.ams.usda.gov/sites/default/files/media/LAMP_Report_to_Congress.pdf>
 
--   Connect and cultivate regional food economies through public-private partnerships.
+![Promotional materials for LAMP. Image: USDA-AMS, 2024](img/LAMP%20Twitter.png){alt="Promotional materials for LAMP. Image: USDA-AMS, 2024" fig-align="center" width="615"}
 
--   Support the development of business plans, feasibility studies, and strategies for value-added agricultural production and local and regional food system infrastructure.
+### Building community capital through food systems investment
 
--   Strengthen capacity and regional food system development through community collaboration and expansion of mid-tier value chains.
+#### Targeting / prioritizing funding
 
--   Improve income and economic opportunities for producers and food businesses through job creation; and
+The goals of the LAMP program include: (1) simplify the application processes and the reporting processes for the Program; (2) improve income and economic opportunities for producers and food businesses through job creation; and (3) strengthen capacity and regional food system development through community collaboration and expansion of mid-tier value chains.[^2]
 
--   Simplify the application processes and the reporting processes for the Program.
+[^2]: <https://www.ams.usda.gov/services/grants/lamp>. Accessed April 20, 2024
 
-The major grant programs within LAMP include the [Local Food Promotion Program (LFPP)](https://www.ams.usda.gov/services/grants/lfpp), [Regional Food Systems Partnership (RFSP)](https://www.ams.usda.gov/services/grants/rfsp), and the [Farmers Market Promotion Program (FMPP)](https://www.ams.usda.gov/services/grants/fmpp).
+Each program within LAMP includes a set of constraints intended to improve the allocation of resources to specific program activity areas.
+
+In 2021, AMS partnered with Florida A&M University and the University of Maryland Eastern Shore on a project focusing on the following goals[^3]:
+
+[^3]: <https://www.ams.usda.gov/sites/default/files/media/MSDUSDAAMSGrantApplicantTASociallyDisadvantaged.pdf>
+
+1.  Evaluate barriers to AMS grant opportunities for socially disadvantaged communities
+
+2.  Invest in building trust and confidence between these communities and the USDA
+
+3.  Take action to rectify inequalities in program access through targeted outreach, training, and technical assistance.
+
+The results of this work are intended to be used to improve access and reduce barriers for all applicants, presumably part of the agency's renewed efforts to address USDA’s history of systemic discrimination.[^4]
+
+[^4]: Kashyap, Pratyoosh, Becca B.R. Jablonski, and Allison Bauman. “Exploring the Relationships among Stocks of Community Wealth, State Farm to School Policies, and the Intensity of Farm to School Activities.” *Food Policy* 122 (January 2024): 102570. <https://doi.org/10.1016/j.foodpol.2023.102570>.
+
+#### Community preparedness
+
+Recent research suggests that the success of food system interventions, policies, and strategies for local economic development may hinge on the preexisting levels of community capital.[^5]
+
+[^5]: Schmit, Todd M., Becca B.R. Jablonski, Alessandro Bonanno, and Thomas G. Johnson. “Measuring Stocks of Community Wealth and Their Association with Food Systems Efforts in Rural and Urban Places.” *Food Policy* 102 (July 2021): 102119. <https://doi.org/10.1016/j.foodpol.2021.102119>.
+
+Additional research showed positive associations between cultural and social capital and farm to school activity.[^6]
+
+[^6]: 
+
+    Kashyap, Pratyoosh, Becca B.R. Jablonski, and Allison Bauman. “Exploring the Relationships among Stocks of Community Wealth, State Farm to School Policies, and the Intensity of Farm to School Activities.” *Food Policy* 122 (January 2024): 102570. <https://doi.org/10.1016/j.foodpol.2023.102570>.
+
+Much of this research highlights community assets that are often overlooked in community development work.[^7]
+
+[^7]: 
+
+    Kashyap, Pratyoosh, Becca B.R. Jablonski, and Allison Bauman. “Exploring the Relationships among Stocks of Community Wealth, State Farm to School Policies, and the Intensity of Farm to School Activities.” *Food Policy* 122 (January 2024): 102570. <https://doi.org/10.1016/j.foodpol.2023.102570>.
+
+## Objective
+
+This report intends to lay the groundwork for an analytic approach that helps determine which community characteristics are associated with LAMP grant funding allocation. This could help determine if there is something akin to a "threshold of community preparedness" the unknowingly results in certain low-resource communities being excluded from LAMP programming. If so, the results of this research could provide insight into the particular characteristics associated with LAMP access, which could help agency staff to better allocate resources to ensure equitable access to grant funds.
+
+## Methods
+
+#### Data access and aggregation
+
+##### Indicators of community wealth
+
+##### Population drivers
+
+##### Farmland proportion
+
+##### Underserved classification
+
+### (Caveats and such)
+
+-   Temporal component -
+
+-   Does not include data on who applied, in addition to who was funded.
 
 ```{r load lamp and join data}
 #| output: false
@@ -302,13 +302,13 @@ my_map %>%
 
 ## Community characteristics
 
-Participation in grant programs supporting investment in local food systems, such as LAMP, is influenced by a variety of socioeconomic and environmental factors that influence local needs, as well as local capacity to apply for grants and manage funded projects. Community wealth, which encompasses social capital, natural capital, financial capital, and a variety of other forms of wealth impacts the ability to engage and participate in such programs.[^4] Moreover, things like poverty and food insecurity rates have been shown to exacerbate vulnerabilities and influence accessibility and participation in programs.[^5] With food systems-focused programs such as LAMP, urbanization and proximity to agricultural land can influence market dynamics and food system connectivity.[^6]
+Participation in grant programs supporting investment in local food systems, such as LAMP, is influenced by a variety of socioeconomic and environmental factors that influence local needs, as well as local capacity to apply for grants and manage funded projects. Community wealth, which encompasses social capital, natural capital, financial capital, and a variety of other forms of wealth impacts the ability to engage and participate in such programs.[^8] Moreover, things like poverty and food insecurity rates have been shown to exacerbate vulnerabilities and influence accessibility and participation in programs.[^9] With food systems-focused programs such as LAMP, urbanization and proximity to agricultural land can influence market dynamics and food system connectivity.[^10]
 
-[^4]: Flora, Cornelia Butler, Jan L. Flora, and Stephen P. Gasteyer. *Rural Communities: Legacy and Change*. 4th ed. Routledge, 2018. <https://doi.org/10.4324/9780429494697>.
+[^8]: Flora, Cornelia Butler, Jan L. Flora, and Stephen P. Gasteyer. *Rural Communities: Legacy and Change*. 4th ed. Routledge, 2018. <https://doi.org/10.4324/9780429494697>.
 
-[^5]: Alisha Coleman-Jensen, Matthew P. Rabbitt, Christian A. Gregory, and Anita Singh. 2021. Household Food Security in the United States in 2020, ERR-298, U.S. Department of Agriculture, Economic Research Service.
+[^9]: Alisha Coleman-Jensen, Matthew P. Rabbitt, Christian A. Gregory, and Anita Singh. 2021. Household Food Security in the United States in 2020, ERR-298, U.S. Department of Agriculture, Economic Research Service.
 
-[^6]: Pothukuchi, Kameshwari, and Jerome L. Kaufman. “The Food System: A Stranger to the Planning Field.” *Journal of the American Planning Association* 66, no. 2 (June 30, 2000): 113–24. <https://doi.org/10.1080/01944360008976093>.
+[^10]: Pothukuchi, Kameshwari, and Jerome L. Kaufman. “The Food System: A Stranger to the Planning Field.” *Journal of the American Planning Association* 66, no. 2 (June 30, 2000): 113–24. <https://doi.org/10.1080/01944360008976093>.
 
 This report will assess the relationship of each of these community characteristics to the distribution of LAMP grants across the US.
 
