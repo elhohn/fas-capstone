@@ -55,6 +55,10 @@ library(ggsci)
 library(parameters)
 library(rstatix)
 library(DT)
+library(extrafont)
+library(ggdist)
+library(lubridate)
+
 
 census_api_key(Sys.getenv("CENSUS_API_KEY"))
 ag_census_api_key <- Sys.getenv("AG_CENSUS_API_KEY")
@@ -129,6 +133,35 @@ pca_prep <- function(d){
 #     return(NULL)
 #   }
 # }
+
+font_import()
+loadfonts(device = "all", quiet = TRUE)
+
+theme_set(theme_void(base_family = "Roboto"))
+
+theme_update(
+  axis.text.x = element_text(color = "black", face = "bold", size = 14, 
+                             margin = margin(t = 6)),
+  axis.text.y = element_text(color = "black", size = 14, hjust = 1, 
+                             margin = margin(r = 6), family = "Roboto Mono"),
+  axis.line.x = element_line(color = "black", linewidth = 1),
+  panel.grid.major.y = element_line(color = "grey90", size = .6),
+  plot.background = element_rect(fill = "white", color = "white"),
+  plot.margin = margin(rep(20, 4))
+)
+
+
+## theme for horizontal charts
+theme_flip <-
+  theme(
+    axis.text.x = element_text(face = "plain", family = "Roboto Mono", size = 14),
+    axis.text.y = element_text(face = "bold", family = "Roboto", size = 14),
+    panel.grid.major.x = element_line(color = "grey90", linewidth = .6),
+    panel.grid.major.y = element_blank(),
+    legend.position = "top", 
+    legend.text = element_text(family = "Roboto Mono", size = 18),
+    legend.title = element_text(face = "bold", size = 18, margin = margin(b = 25))
+  )
 ```
 
 ## Introduction
@@ -139,11 +172,11 @@ The USDA's Agricultural Marketing Service (AMS) administers a variety of grant p
 
 [^1]: <https://www.ams.usda.gov/sites/default/files/media/LAMP_Report_to_Congress.pdf>
 
-![Promotional materials for LAMP. Image: USDA-AMS, 2024](img/LAMP%20Twitter.png){alt="Promotional materials for LAMP. Image: USDA-AMS, 2024" fig-align="center" width="615"}
+![Promotional materials for LAMP. Image: USDA-AMS, 2024](img/LAMP%20Twitter.png){fig-align="center" width="615"}
 
 ### Building community capital through food systems investment
 
-#### Targeting / prioritizing funding
+#### Allocating grant funding
 
 The goals of the LAMP program include: (1) simplify the application processes and the reporting processes for the Program; (2) improve income and economic opportunities for producers and food businesses through job creation; and (3) strengthen capacity and regional food system development through community collaboration and expansion of mid-tier value chains.[^2]
 
@@ -173,15 +206,11 @@ Recent research suggests that the success of food system interventions, policies
 
 Additional research showed positive associations between cultural and social capital and farm to school activity.[^6]
 
-[^6]: 
-
-    Kashyap, Pratyoosh, Becca B.R. Jablonski, and Allison Bauman. “Exploring the Relationships among Stocks of Community Wealth, State Farm to School Policies, and the Intensity of Farm to School Activities.” *Food Policy* 122 (January 2024): 102570. <https://doi.org/10.1016/j.foodpol.2023.102570>.
+[^6]: Kashyap, Pratyoosh, Becca B.R. Jablonski, and Allison Bauman. “Exploring the Relationships among Stocks of Community Wealth, State Farm to School Policies, and the Intensity of Farm to School Activities.” *Food Policy* 122 (January 2024): 102570. <https://doi.org/10.1016/j.foodpol.2023.102570>.
 
 Much of this research highlights community assets that are often overlooked in community development work.[^7]
 
-[^7]: 
-
-    Kashyap, Pratyoosh, Becca B.R. Jablonski, and Allison Bauman. “Exploring the Relationships among Stocks of Community Wealth, State Farm to School Policies, and the Intensity of Farm to School Activities.” *Food Policy* 122 (January 2024): 102570. <https://doi.org/10.1016/j.foodpol.2023.102570>.
+[^7]: Kashyap, Pratyoosh, Becca B.R. Jablonski, and Allison Bauman. “Exploring the Relationships among Stocks of Community Wealth, State Farm to School Policies, and the Intensity of Farm to School Activities.” *Food Policy* 122 (January 2024): 102570. <https://doi.org/10.1016/j.foodpol.2023.102570>.
 
 ## Objective
 
@@ -189,21 +218,13 @@ This report intends to lay the groundwork for an analytic approach that helps de
 
 ## Methods
 
-#### Data access and aggregation
+### Data access and aggregation
 
-##### Indicators of community wealth
+As a first step, a variety of data sets were obtained, cleaned, organized, and used for general data exploration. Information on specific datasets and sources can be found below. All work was done using the open source statistical software R version 4.4.0.[^8]
 
-##### Population drivers
+[^8]: <https://www.r-project.org/>
 
-##### Farmland proportion
-
-##### Underserved classification
-
-### (Caveats and such)
-
--   Temporal component -
-
--   Does not include data on who applied, in addition to who was funded.
+#### LAMP grant data
 
 ```{r load lamp and join data}
 #| output: false
@@ -262,7 +283,48 @@ lamp_by_county <- counties %>%
   select(fips, county_name, lamp_funded, Award.Amount)
 ```
 
-##### Distribution of LAMP Grant funding across CONUS
+Information on LAMP awards came from the LAMP Navigator website, where AMS has made this information publicly available, along with a dashboard for sorting, filtering, and visualizing the grant information.[^9]
+
+[^9]: <https://www.ams.usda.gov/data/lamp-navigator>
+
+##### LAMP grant award amounts, 2006 - 2023
+
+```{r lamp grant distribution}
+#| fig-height: 8
+#| fig-width: 12
+#| fig-align: center
+#| out-width: 100%
+
+l <- lamp %>%
+  mutate(
+    Year = ymd(Year, truncated = 2L)
+  )
+
+g <- ggplot(l, aes(x = Year, y = Award.Amount)) +
+  geom_point(shape = 95, size = 10, alpha = .33, color = '#005440') +
+  theme(legend.position="none") +
+  scale_x_date(date_breaks = '1 year', date_labels = "'%y") + 
+  scale_y_continuous(labels = dollar) +
+  annotate(
+    geom = 'text',
+    x = as.Date('2011-01-01'),
+    y = 400000,
+    label = 'No 2013 awards\ndue to lapse\nof funding',
+    size = 4,
+    color = 'grey35'
+  ) +
+  annotate(
+    geom = "curve",
+    x = as.Date('2011-10-01'),
+    xend = as.Date('2013-01-01'),
+    y = 350000, yend = 20000,
+    curvature = -0.3,
+    arrow = arrow(),
+    color = 'grey35'
+  )
+
+g
+```
 
 ```{r lamp funded leaflet map}
 
@@ -272,6 +334,17 @@ d_map_lamp$point_size <- scales::rescale(d_map_lamp$Award.Amount, c(1, 15))
 grant_colors <- as.vector(paletteer_d("nbapalettes::thunder")[1:3])
 pal <- colorFactor(
   palette = grant_colors, domain = d_map_lamp$Grant.Type)
+
+county_pal <- colorBin(
+      palette = as.vector(paletteer_d("PrettyCols::Teals"))[1:6],
+      bins = 6,
+      reverse = TRUE,
+      domain = c(
+        min(lamp_by_county$Award.Amount, na.rm = TRUE),
+        max(lamp_by_county$Award.Amount, na.rm=TRUE)
+      ),
+      na.color = '#F0EBE9'
+      )
 
 labels <- sprintf(
   "<strong>%s</strong><br/>Year: %g<br/>Award amount: %s<br/>Grant type: %s<br/>Project type: %s",
@@ -287,34 +360,96 @@ my_map %>%
     stroke = FALSE,
     fillOpacity = 0.5,
     label = labels,
+    group = 'City/Town',
     labelOptions = labelOptions(
       style = list("font-weight" = "normal", padding = "3px 8px"),
       textsize = "15px",
       direction = "auto")
  ) %>%
-  addLegend(
-    data = d_map_lamp, "bottomright", pal = pal, values = ~Grant.Type,
-    title = "Grant Type",
-    opacity = 1
+  addPolygons(
+    data = lamp_by_county,
+    weight = 0.5,
+    color = 'white',
+    fillColor = ~county_pal(Award.Amount),
+    fillOpacity = 1,
+    group = "County",
+    popup = glue(
+      "<b>{lamp_by_county$county_name}</b><br/>",
+      "Total Awards: {scales::dollar(lamp_by_county$Award.Amount)}") %>%
+      lapply(htmltools::HTML)
   ) %>%
+  addLegend(
+    "bottomright",
+    pal = county_pal,
+    na.label = "No grants",
+    opacity = 1,
+    values = lamp_by_county$Award.Amount,
+    title = HTML('Total LAMP Awards<br>Received, 2006-2023'),
+    group = "County",
+    labFormat = labelFormat(
+      big.mark = ",",
+      prefix = "$"
+    ),
+    className = "info legend County"
+  ) %>%
+  addLegend(
+    data = d_map_lamp, "bottomright", pal = pal, 
+    values = ~Grant.Type,
+    title = "Grant Type",
+    opacity = 1,
+    className = "info legend City/Town"
+  ) %>% addLayersControl(
+    baseGroups = c(
+      "City/Town",
+      "County"
+    ),
+    options = layersControlOptions(collapsed = FALSE)
+  ) %>%
+    htmlwidgets::onRender(
+      "
+        function(el, x) {
+           var updateLegend = function () {
+              var selectedGroup = document.querySelectorAll('input:checked')[0].nextSibling.innerText.substr(1);
+
+              document.querySelectorAll('.legend').forEach(a => a.hidden=true);
+              document.querySelectorAll('.legend').forEach(l => {
+                 if (l.classList.contains(selectedGroup)) l.hidden=false;
+              });
+           };
+           updateLegend();
+           this.on('baselayerchange', el => updateLegend());
+        }"
+    ) %>%
   bslib::card(full_screen = TRUE)
 ```
 
-## Community characteristics
+#### Community characteristics
 
-Participation in grant programs supporting investment in local food systems, such as LAMP, is influenced by a variety of socioeconomic and environmental factors that influence local needs, as well as local capacity to apply for grants and manage funded projects. Community wealth, which encompasses social capital, natural capital, financial capital, and a variety of other forms of wealth impacts the ability to engage and participate in such programs.[^8] Moreover, things like poverty and food insecurity rates have been shown to exacerbate vulnerabilities and influence accessibility and participation in programs.[^9] With food systems-focused programs such as LAMP, urbanization and proximity to agricultural land can influence market dynamics and food system connectivity.[^10]
+Participation in grant programs supporting investment in local food systems, such as LAMP, is influenced by a variety of socioeconomic and environmental factors that influence local needs, as well as local capacity to apply for grants and manage funded projects. Community wealth, which encompasses social capital, natural capital, financial capital, and a variety of other forms of wealth impacts the ability to engage and participate in such programs.[^10] Moreover, things like poverty and food insecurity rates have been shown to exacerbate vulnerabilities and influence accessibility and participation in programs.[^11] With food systems-focused programs such as LAMP, urbanization and proximity to agricultural land can influence market dynamics and food system connectivity.[^12]
 
-[^8]: Flora, Cornelia Butler, Jan L. Flora, and Stephen P. Gasteyer. *Rural Communities: Legacy and Change*. 4th ed. Routledge, 2018. <https://doi.org/10.4324/9780429494697>.
+[^10]: Flora, Cornelia Butler, Jan L. Flora, and Stephen P. Gasteyer. *Rural Communities: Legacy and Change*. 4th ed. Routledge, 2018. <https://doi.org/10.4324/9780429494697>.
 
-[^9]: Alisha Coleman-Jensen, Matthew P. Rabbitt, Christian A. Gregory, and Anita Singh. 2021. Household Food Security in the United States in 2020, ERR-298, U.S. Department of Agriculture, Economic Research Service.
+[^11]: Alisha Coleman-Jensen, Matthew P. Rabbitt, Christian A. Gregory, and Anita Singh. 2021. Household Food Security in the United States in 2020, ERR-298, U.S. Department of Agriculture, Economic Research Service.
 
-[^10]: Pothukuchi, Kameshwari, and Jerome L. Kaufman. “The Food System: A Stranger to the Planning Field.” *Journal of the American Planning Association* 66, no. 2 (June 30, 2000): 113–24. <https://doi.org/10.1080/01944360008976093>.
+[^12]: Pothukuchi, Kameshwari, and Jerome L. Kaufman. “The Food System: A Stranger to the Planning Field.” *Journal of the American Planning Association* 66, no. 2 (June 30, 2000): 113–24. <https://doi.org/10.1080/01944360008976093>.
 
 This report will assess the relationship of each of these community characteristics to the distribution of LAMP grants across the US.
 
-### Exploration of available data
+#### Indicators of community wealth
 
-As a first step, a variety of data sets were obtained, cleaned, and used for some general data exploration.
+#### Population drivers
+
+#### Farmland proportion
+
+#### Underserved classification
+
+### (Caveats and such)
+
+-   Temporal component -
+
+-   Does not include data on who applied, in addition to who was funded.
+
+##### Distribution of LAMP Grant funding across CONUS
 
 #### Indicators of community wealth
 
