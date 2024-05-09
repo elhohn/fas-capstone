@@ -289,8 +289,10 @@ Information on LAMP awards came from the LAMP Navigator website, where AMS has m
 
 ##### LAMP grant award amounts, 2006 - 2023
 
+Each green dash represents a grant award
+
 ```{r lamp grant distribution}
-#| fig-height: 8
+#| fig-height: 6
 #| fig-width: 12
 #| fig-align: center
 #| out-width: 100%
@@ -325,6 +327,8 @@ g <- ggplot(l, aes(x = Year, y = Award.Amount)) +
 
 g
 ```
+
+##### Geographic distribution of LAMP Grants, 2006-2023
 
 ```{r lamp funded leaflet map}
 
