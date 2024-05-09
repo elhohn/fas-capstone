@@ -58,6 +58,7 @@ library(DT)
 library(extrafont)
 library(ggdist)
 library(lubridate)
+library(gt)
 
 
 census_api_key(Sys.getenv("CENSUS_API_KEY"))
@@ -429,7 +430,7 @@ my_map %>%
 
 #### Community characteristics
 
-Participation in grant programs supporting investment in local food systems, such as LAMP, is influenced by a variety of socioeconomic and environmental factors that influence local needs, as well as local capacity to apply for grants and manage funded projects. Community wealth, which encompasses social capital, natural capital, financial capital, and a variety of other forms of wealth impacts the ability to engage and participate in such programs.[^10] Moreover, things like poverty and food insecurity rates have been shown to exacerbate vulnerabilities and influence accessibility and participation in programs.[^11] With food systems-focused programs such as LAMP, urbanization and proximity to agricultural land can influence market dynamics and food system connectivity.[^12]
+A variety of socioeconomic and environmental factors were investigated to assess how they may influence the likelihood of receiving a LAMP grant. These factors include indicators of community wealth, which encompasses social capital, natural capital, financial capital, and a variety of other forms of wealth, which have been shown impacts the ability to engage and participate in such programs.[^10] Additionally, it includes factors related to poverty and food security, which have been shown to exacerbate vulnerabilities and influence accessibility and participation in programs.[^11] Finally, considering the food systems-focus of LAMP, factors related to urbanization and proximity to agricultural land were included because they can influence market dynamics and food system connectivity.[^12]
 
 [^10]: Flora, Cornelia Butler, Jan L. Flora, and Stephen P. Gasteyer. *Rural Communities: Legacy and Change*. 4th ed. Routledge, 2018. <https://doi.org/10.4324/9780429494697>.
 
@@ -482,6 +483,67 @@ for (var in vars) {
   descriptions <- append(descriptions, my_desc)
 }
 descriptions <- unlist(descriptions)
+
+sources <- list()
+for (var in vars) {
+  my_source <- descriptions_csv$Source[match(var, descriptions_csv$Variable)]
+  sources <- append(sources, my_source)
+}
+sources <- unlist(sources)
+
+d <- data.frame(
+  list(
+    'variable' = vars,
+    'category' = cats,
+    'description' = descriptions,
+    'source' = sources
+  )
+)
+
+gt_tbl <- d |>
+  gt(rowname_col = "variable") %>%
+  cols_hide('category') %>%
+  tab_header(
+    title = "Indicators of community wealth variables",
+    subtitle = "Descriptions and sources of data used in analysis"
+  ) |>
+  # tab_source_note(
+  #   source_note = "Source: The World Almanac and Book of Facts, 1975, page 406."
+  # ) |>
+  # tab_source_note(
+  #   source_note = md("Reference: McNeil, D. R. (1977) *Interactive Data Analysis*. Wiley.")
+  # ) |>
+  # tab_footnote(
+  #   footnote = md("The **largest** by area."),
+  #   locations = cells_body(
+  #     columns = size, rows = largest
+  #   )
+  # ) |>
+  # tab_footnote(
+  #   footnote = "The lowest by population.",
+  #   locations = cells_body(
+  #     columns = size, rows = contains("arc")
+  #   )
+  # ) |> 
+  tab_row_group(
+    label = html("<strong>Community Characteristics</strong>"),
+    rows = category == 'Community Characteristics'
+  ) |>
+  tab_row_group(
+    label = html("<strong>Processing & Distribution</strong>"),
+    rows = category == 'Processing & Distribution'
+  ) |>
+  tab_row_group(
+    label = html("<strong>Food Access</strong>"),
+    rows = category == 'Food Access'
+  ) |>
+  cols_label(
+    description = "Description",
+    source = "Data Source"
+  )
+
+# Show the gt table
+gt_tbl
 
 ```
 
@@ -1506,7 +1568,7 @@ p <- ggplot(clustered_melted,
   theme(
     legend.position="none",
     strip.background = element_rect(fill="#2F414BFF"),
-    strip.text = element_text(color = 'grey76', face = 'bold')
+    strip.text = element_text(color = 'grey76', face = 'bold', size = 14)
   )
 
 p
