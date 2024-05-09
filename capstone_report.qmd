@@ -438,7 +438,7 @@ A variety of socioeconomic and environmental factors were investigated to assess
 
 [^12]: Pothukuchi, Kameshwari, and Jerome L. Kaufman. “The Food System: A Stranger to the Planning Field.” *Journal of the American Planning Association* 66, no. 2 (June 30, 2000): 113–24. <https://doi.org/10.1080/01944360008976093>.
 
-#### Indicators of community wealth
+##### Indicators of community wealth
 
 ```{r prep comm wealth data}
 
@@ -558,7 +558,7 @@ gt_tbl <- d |>
   opt_table_font(
     font = google_font("Roboto")) |>
   tab_options(
-    table.font.size = 10
+    table.font.size = 11
   )
 
 
@@ -567,25 +567,12 @@ gt_tbl
 
 ```
 
-#### Population drivers
-
-#### Farmland proportion
-
-#### Underserved classification
-
-### (Caveats and such)
-
--   Temporal component -
-
--   Does not include data on who applied, in addition to who was funded.
-
-##### Distribution of LAMP Grant funding across CONUS
-
-#### Indicators of community wealth
+###### Distribution of LAMP Grant funding across CONUS
 
 ```{r wealth data subset}
 #| warnings: false
 
+# for map-making in next step
 infrastructure <- subsetter("Infrastructure")
 food_processors <- subsetter("Food Processors")
 community_resources <- subsetter("Community Resources")
@@ -595,8 +582,6 @@ food_insecurity <- subsetter("Food Insecurity")
 natural <- subsetter("Natural")
 agriculture <- subsetter("Agriculture")
 ```
-
-##### Exploratory map of community wealth data
 
 ```{r wealth map}
 #| warnings: false
@@ -831,46 +816,9 @@ my_map %>%
   bslib::card(full_screen = TRUE)
 ```
 
-#### Additional explanatory variables
+#### Additional community characteristics
 
-##### Rural-Urban Continuum Classification
-
-```{r ruc data grab}
-
-## Urban-rural continuum
-ruc_url <- 'https://www.ers.usda.gov/webdocs/DataFiles/53251/Ruralurbancontinuumcodes2023.xlsx?v=3167.7'
-
-ruc <- read.xlsx(ruc_url) %>%
-  select(FIPS, RUCC_2023, Description) %>%
-  mutate(RUCC_2023 = as.factor(RUCC_2023)) %>%
-  rename(fips = FIPS)
-
-ruc_sf <- counties %>%
-  merge(ruc, by = 'fips') %>%
-  mutate(RUCC_2023 = as.factor(RUCC_2023)) %>%
-  st_transform(4326)
-```
-
-```{r rural and underserved data grab}
-
-## Rural and Underserved designation
-rural_data_url <- 'https://files.consumerfinance.gov/f/documents/cfpb_rural-list_2024.csv'
-rural_data <- read.csv(rural_data_url)
-rural_data$FIPS.Code <- sapply(rural_data$FIPS.Code, add_leading_zero)
-underserved_data_url <- 'https://files.consumerfinance.gov/f/documents/cfpb_underserved-list_2024.csv'
-underserved_data <- read.csv(underserved_data_url)
-underserved_data$FIPS.Code <- sapply(underserved_data$FIPS.Code, add_leading_zero)
-underserved_sf <- counties %>%
-  mutate(
-    is_rural = as.factor(ifelse(fips %in% rural_data$FIPS.Code, 1, 0)),
-    is_underserved = as.factor(ifelse(fips %in% underserved_data$FIPS.Code, 1, 0))
-    ) %>%
-  #select(-county_name) %>%
-  st_transform(4326)
-
-underserved <- underserved_sf %>%
-  st_drop_geometry()
-```
+##### Poverty rate
 
 ```{r poverty data grab}
 
@@ -890,6 +838,10 @@ pov_sf <- counties %>%
   merge(pov, by = 'fips') %>%
   st_transform(4326)
 ```
+
+Data on county-level poverty rates were obtained from the 2022 US Census.
+
+##### Farmland proportion
 
 ```{r ag proportion data grab}
 
@@ -927,6 +879,53 @@ ag_land_sf <- counties %>%
   merge(ag_land, by = 'fips') %>%
   st_transform(4326)
 ```
+
+Data on total agricultural land were obtained from the 2022 Census of Agriculture.
+
+##### "Rural" and "underserved" classification
+
+```{r rural and underserved data grab}
+
+## Rural and Underserved designation
+rural_data_url <- 'https://files.consumerfinance.gov/f/documents/cfpb_rural-list_2024.csv'
+rural_data <- read.csv(rural_data_url)
+rural_data$FIPS.Code <- sapply(rural_data$FIPS.Code, add_leading_zero)
+underserved_data_url <- 'https://files.consumerfinance.gov/f/documents/cfpb_underserved-list_2024.csv'
+underserved_data <- read.csv(underserved_data_url)
+underserved_data$FIPS.Code <- sapply(underserved_data$FIPS.Code, add_leading_zero)
+underserved_sf <- counties %>%
+  mutate(
+    is_rural = as.factor(ifelse(fips %in% rural_data$FIPS.Code, 1, 0)),
+    is_underserved = as.factor(ifelse(fips %in% underserved_data$FIPS.Code, 1, 0))
+    ) %>%
+  #select(-county_name) %>%
+  st_transform(4326)
+
+underserved <- underserved_sf %>%
+  st_drop_geometry()
+```
+
+County-level classifications as "rural" and/or "underserved were obtained from the US Consumer Finance Bureau...
+
+##### Rural-Urban Continuum Classification
+
+```{r ruc data grab}
+
+## Urban-rural continuum
+ruc_url <- 'https://www.ers.usda.gov/webdocs/DataFiles/53251/Ruralurbancontinuumcodes2023.xlsx?v=3167.7'
+
+ruc <- read.xlsx(ruc_url) %>%
+  select(FIPS, RUCC_2023, Description) %>%
+  mutate(RUCC_2023 = as.factor(RUCC_2023)) %>%
+  rename(fips = FIPS)
+
+ruc_sf <- counties %>%
+  merge(ruc, by = 'fips') %>%
+  mutate(RUCC_2023 = as.factor(RUCC_2023)) %>%
+  st_transform(4326)
+```
+
+The categorization of each county on the rural-urban continuum came from the USDA-ERS...
 
 ##### Exploratory map of additional explanatory variables
 
@@ -1134,6 +1133,12 @@ for(i in 1:ncol(d)){
   d[is.na(d[,i]), i] <- mean(d[,i], na.rm = TRUE)
 }
 ```
+
+### (Caveats and such)
+
+-   Temporal component -
+
+-   Does not include data on who applied, in addition to who was funded.
 
 ### Community characteristics and LAMP funding
 
