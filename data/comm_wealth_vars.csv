@@ -1,0 +1,21 @@
+Variable,Description,Source
+foodbev_mfg,"Number of food and beverage manufacturing establishments per 10,000 people",Derived from NAICS 311 data
+other_mfg,"Number of other manufacturing establishments per 10,000 people",Derived from NAICS data excluding 311
+broad,"Access to fixed advanced telecommunications, i.e., high-speed internet access",FCC data
+highway,Proximity to interstate highways,Derived from federal highway data
+pub_lib,"Number of public libraries per 100,000 people",Derived from NAICS 519120
+museums,"Number of museums per 100,000 people",Derived from NAICS 712110
+create_indus,"Number of creative industry businesses per 100,000 people",Derived from NAICS data
+create_jobs,Percentage of workers employed in the arts,Derived from NAICS 7111 and 7113–7115
+racial_div,Racial/ethnic diversity index based on six ethnic categories tracked by the U.S. Census,U.S. Census data
+owner_occupied,Number of owner-occupied units without a mortgage per capita,U.S. Census data
+deposits,Level of deposits to FDIC-insured institutions per capita,FDIC data
+localgovfin,County government cash and security holdings net of government debt per capita,Derived from local government financial reports
+ed_attain,"Percentage of the adult population with a bachelor’s, graduate, or professional degree",U.S. Census data
+health_outcome,Z-scores that represent physical health with respect to today’s health,Derived from national health statistics
+health_factor,Z-scores that represent potential future health conditions,Derived from national health statistics
+food_secure,Percentage of the population defined as food secure,Derived from USDA data
+insured,Percentage of the population having health insurance,Derived from U.S. Census data
+primary_care,"Number of primary care physicians per 10,000 people",Medical association data
+natamen,Natural Amenities Scale (NAS) designations,USDA Economic Research Service
+prime_farmland,Percentage of acres defined as prime farmland,National Agricultural Statistics Service
