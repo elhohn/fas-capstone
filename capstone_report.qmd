@@ -283,13 +283,13 @@ lamp_by_county <- counties %>%
   select(fips, county_name, lamp_funded, Award.Amount)
 ```
 
-Information on LAMP awards came from the LAMP Navigator website, where AMS has made this information publicly available, along with a dashboard for sorting, filtering, and visualizing the grant information.[^9]
+Information on LAMP awards came from the LAMP Navigator website, where AMS has made this information publicly available, along with a dashboard for sorting, filtering, and visualizing the grant information.[^9] Along with information about the organizations receiving the grant, the dataset includes information on the purpose of the grant (e.g., technical assistance, infrastructure, processing), the match amount, and the total project cost.
 
 [^9]: <https://www.ams.usda.gov/data/lamp-navigator>
 
 ##### LAMP grant award amounts, 2006 - 2023
 
-Each green dash represents a grant award
+###### Each green dash represents a single grant award
 
 ```{r lamp grant distribution}
 #| fig-height: 6
@@ -303,7 +303,7 @@ l <- lamp %>%
   )
 
 g <- ggplot(l, aes(x = Year, y = Award.Amount)) +
-  geom_point(shape = 95, size = 10, alpha = .33, color = '#005440') +
+  geom_point(shape = 95, size = 10, alpha = .4, color = '#005440') +
   theme(legend.position="none") +
   scale_x_date(date_breaks = '1 year', date_labels = "'%y") + 
   scale_y_continuous(labels = dollar) +
@@ -437,24 +437,6 @@ Participation in grant programs supporting investment in local food systems, suc
 
 [^12]: Pothukuchi, Kameshwari, and Jerome L. Kaufman. “The Food System: A Stranger to the Planning Field.” *Journal of the American Planning Association* 66, no. 2 (June 30, 2000): 113–24. <https://doi.org/10.1080/01944360008976093>.
 
-This report will assess the relationship of each of these community characteristics to the distribution of LAMP grants across the US.
-
-#### Indicators of community wealth
-
-#### Population drivers
-
-#### Farmland proportion
-
-#### Underserved classification
-
-### (Caveats and such)
-
--   Temporal component -
-
--   Does not include data on who applied, in addition to who was funded.
-
-##### Distribution of LAMP Grant funding across CONUS
-
 #### Indicators of community wealth
 
 ```{r prep comm wealth data}
@@ -472,7 +454,52 @@ add_leading_zero <- function(x) {
 
 # apply funcion to fips column
 comm_wealth_all$fips <- sapply(comm_wealth_all$fips, add_leading_zero)
+
+comm_wealth_all <- comm_wealth_all %>%
+  filter(variable_name != 'broad_11')
 ```
+
+Community wealth data were accessed via the USDA AMS Data and Metrics GitHub repository.[^13] The main source of data was the "Indicators of Community Wealth" dataset within this repository, which was the result of various pre-processing steps that are outlined within the Rmarkdown file included in the repo.
+
+[^13]: <https://github.com/CSU-Local-and-Regional-Food-Systems/USDA-AMS-Data-and-Metrics/tree/main>
+
+```{r community wealth variables table}
+
+vars <- unique(comm_wealth_all$variable_name)
+
+cats <- list()
+for (var in vars) {
+  my_cat <- comm_wealth_all$category[match(var, comm_wealth_all$variable_name)]
+  cats <- append(cats, my_cat)
+}
+cats <- unlist(cats)
+
+descriptions_csv <- read.csv('data/comm_wealth_vars.csv')
+
+descriptions <- list()
+for (var in vars) {
+  my_desc <- descriptions_csv$Description[match(var, descriptions_csv$Variable)]
+  descriptions <- append(descriptions, my_desc)
+}
+descriptions <- unlist(descriptions)
+
+```
+
+#### Population drivers
+
+#### Farmland proportion
+
+#### Underserved classification
+
+### (Caveats and such)
+
+-   Temporal component -
+
+-   Does not include data on who applied, in addition to who was funded.
+
+##### Distribution of LAMP Grant funding across CONUS
+
+#### Indicators of community wealth
 
 ```{r wealth data subset}
 #| warnings: false
@@ -1450,7 +1477,7 @@ datatable(
 
 ```{r cluster analysis plots}
 #| fig-width: 10
-#| fig-height: 15
+#| fig-height: 8
 
 clustered_melted <- reshape2::melt(
   clustered, id.vars = c('cluster', 'lamp_funded'))
@@ -1473,7 +1500,7 @@ p <- ggplot(clustered_melted,
   scale_colour_manual(
     values=c("transparent", "darkgreen"),
     labels = c("Did not receive\nLAMP funding", "Received\nLAMP funding")) +
-  facet_wrap(~ variable, ncol = 4, nrow = 3, scales = 'free_y') +
+  facet_wrap(~ variable, ncol = 3, nrow = 4, scales = 'free_y') +
   #theme_minimal() +
   labs(title="County-level principal component values, by cluster",
        x ="Social Capital Cluster", y = "Social Capital Index",
