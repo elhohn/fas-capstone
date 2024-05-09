@@ -501,6 +501,8 @@ d <- data.frame(
 )
 
 gt_tbl <- d |>
+  mutate(category = replace_na(category, "Uncategorized")) |>
+  group_by(category) |>
   gt(rowname_col = "variable") %>%
   cols_hide('category') %>%
   tab_header(
@@ -537,10 +539,28 @@ gt_tbl <- d |>
     label = html("<strong>Food Access</strong>"),
     rows = category == 'Food Access'
   ) |>
+  tab_row_group(
+    label = html("<strong>Uncategorized</strong>"),
+    rows = category == 'Uncategorized'
+  ) |>
   cols_label(
     description = "Description",
     source = "Data Source"
+  ) |>
+  tab_style(
+    style = list(
+      cell_fill("grey90"),
+      cell_text(color = "black", weight = "bold")
+      ),
+    locations = cells_row_groups()
+  ) |>
+  opt_row_striping(row_striping = FALSE) |>
+  opt_table_font(
+    font = google_font("Roboto")) |>
+  tab_options(
+    table.font.size = 10
   )
+
 
 # Show the gt table
 gt_tbl
