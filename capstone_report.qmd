@@ -569,6 +569,7 @@ gt_tbl <- d |>
       ),
     locations = cells_row_groups()
   ) |>
+  tab_options(row.striping.include_table_body = FALSE) |>
   opt_row_striping(row_striping = FALSE) |>
   opt_table_font(
     font = google_font("Roboto")) |>
