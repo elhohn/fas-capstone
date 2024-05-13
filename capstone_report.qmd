@@ -135,8 +135,8 @@ pca_prep <- function(d){
 #   }
 # }
 
-font_import()
-loadfonts(device = "all", quiet = TRUE)
+# font_import()
+# loadfonts(device = "all", quiet = TRUE)
 
 theme_set(theme_void(base_family = "Roboto"))
 
@@ -468,25 +468,32 @@ Community wealth data were accessed via the USDA AMS Data and Metrics GitHub rep
 
 vars <- unique(comm_wealth_all$variable_name)
 
-cats <- list()
-for (var in vars) {
-  my_cat <- comm_wealth_all$category[match(var, comm_wealth_all$variable_name)]
-  cats <- append(cats, my_cat)
-}
-cats <- unlist(cats)
+# cats <- list()
+# for (var in vars) {
+#   my_cat <- comm_wealth_all$category[match(var, comm_wealth_all$variable_name)]
+#   cats <- append(cats, my_cat)
+# }
+# cats <- unlist(cats)
 
-descriptions_csv <- read.csv('data/comm_wealth_vars.csv')
+descriptions_csv <- read.csv('data/metadata_all_files.csv')
 
 descriptions <- list()
 for (var in vars) {
-  my_desc <- descriptions_csv$Description[match(var, descriptions_csv$Variable)]
+  my_desc <- descriptions_csv$variable_definition[match(var, descriptions_csv$variable_name)]
   descriptions <- append(descriptions, my_desc)
 }
 descriptions <- unlist(descriptions)
 
+cats <- list()
+for (var in vars) {
+  my_cat <- descriptions_csv$category[match(var, descriptions_csv$variable_name)]
+  cats <- append(cats, my_cat)
+}
+cats <- unlist(cats)
+
 sources <- list()
 for (var in vars) {
-  my_source <- descriptions_csv$Source[match(var, descriptions_csv$Variable)]
+  my_source <- descriptions_csv$source[match(var, descriptions_csv$variable_name)]
   sources <- append(sources, my_source)
 }
 sources <- unlist(sources)
@@ -540,8 +547,16 @@ gt_tbl <- d |>
     rows = category == 'Food Access'
   ) |>
   tab_row_group(
-    label = html("<strong>Uncategorized</strong>"),
-    rows = category == 'Uncategorized'
+    label = html("<strong>Institutions</strong>"),
+    rows = category == 'Institutions'
+  ) |>
+  tab_row_group(
+    label = html("<strong>Labor</strong>"),
+    rows = category == 'Labor'
+  ) |>
+  tab_row_group(
+    label = html("<strong>Demographics</strong>"),
+    rows = category == 'Demographics'
   ) |>
   cols_label(
     description = "Description",
@@ -1307,7 +1322,7 @@ p <- ggplot(d3 %>% filter(variable != "Total LAMP funding") %>% ungroup(),
      geom_point(aes(color = variable#,
                 #text = paste("County:", county_name)
                 ),
-                alpha = 0.7, size = 2) +
+                alpha = 0.5, size = 2) +
      geom_smooth(method = 'lm', se = FALSE, color = 'grey25', linewidth = .4) +
      scale_color_manual(values = ggsci::pal_igv("default")(length(unique(d3$variable))-1)) +
      facet_wrap(~ variable, ncol = 6, scales = 'free_x') +
