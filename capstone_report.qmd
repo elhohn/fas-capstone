@@ -877,7 +877,7 @@ pov_sf <- counties %>%
 
 ```{r ag proportion data grab}
 
-View(tidyUSDA::allDataItem)
+#View(tidyUSDA::allDataItem)
 
 ## Ag proportion
 cropland_acres_df <- getQuickstat(
@@ -1206,13 +1206,11 @@ for(i in 1:ncol(d)){
 }
 ```
 
-### (Caveats and such)
+### Analyzing the relationship between community characteristics and LAMP funding
 
--   Temporal component -
+The USDA aims to make LAMP grants available to all eligible communities across the US and its territories. To effectively distribute these grants, USDA considers various factors, such as potential for job creation, improvement in local food supply chains, and enhancement of local economies, with an intended focus on underserved communities and regions with limited market access.
 
--   Does not include data on who applied, in addition to who was funded.
-
-### Community characteristics and LAMP funding
+This analysis
 
 ##### Plotting each variable against total LAMP award money received
 
