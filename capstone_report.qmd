@@ -103,7 +103,7 @@ subsetter <- function(topic) {
   d$composite <- rescale(d$mean, to = c(0, 100))
   
   d <- counties %>%
-    merge(d, by = 'fips') %>%
+    merge(d, by = 'fips', all = TRUE) %>%
     st_transform(4326) %>%
     st_set_geometry('geometry') %>%
     select(-mean)
@@ -583,8 +583,6 @@ gt_tbl
 
 ```
 
-###### Distribution of LAMP Grant funding across CONUS
-
 ```{r wealth data subset}
 #| warnings: false
 
@@ -599,6 +597,8 @@ natural <- subsetter("Natural")
 agriculture <- subsetter("Agriculture")
 ```
 
+#### Distribution of community wealth metrics
+
 ```{r wealth map}
 #| warnings: false
 
@@ -606,7 +606,7 @@ bins <- seq(from = 0, to = 1, by = 0.2)
 pal <- colorBin("YlOrRd", domain = 0:1, bins = bins)
 
 pal_generator <- function(d, pal = 'RdPu') {
-  return(colorQuantile(palette = pal, domain = d$overall, n = 6, na.color = 'grey75'))
+  return(colorQuantile(palette = pal, domain = d$overall, n = 6, na.color = 'grey'))
 }
 
 label_generator <- function(d) {
@@ -726,7 +726,8 @@ my_map %>%
     values = natural$composite,
     title = HTML('Natural Resources<br>Index Score'),
     group = "Natural_Resources",
-    className = "info legend Natural_Resources"
+    className = "info legend Natural_Resources",
+    na.label = "No data"
   ) %>%
   addLegend(
     "bottomright",
@@ -737,7 +738,9 @@ my_map %>%
     values = agriculture$composite,
     title = HTML('Agricultural Resources<br>Index Score'),
     group = "Agricultural_Resources",
-    className = 'info legend Agricultural_Resources') %>%
+    className = 'info legend Agricultural_Resources',
+    na.label = "No data"
+    ) %>%
   addLegend(
     "bottomright",
     pal = pal_generator(
@@ -748,7 +751,8 @@ my_map %>%
     values = financial$composite,
     title = HTML('Financial Resources<br>Index Score'),
     group = "Financial_Resources",
-    className = "info legend Financial_Resources"
+    className = "info legend Financial_Resources",
+    na.label = "No data"
     ) %>%
   addLegend(
     "bottomright",
@@ -760,7 +764,9 @@ my_map %>%
     values = community_resources$composite,
     title = HTML('Commnunity Resources<br>Index Score'),
     group = "Community_Resources",
-    className = 'info legend Community_Resources') %>%
+    className = 'info legend Community_Resources',
+    na.label = "No data"
+    ) %>%
   addLegend(
     "bottomright",
     pal = pal_generator(
@@ -771,7 +777,9 @@ my_map %>%
     values = food_processors$composite,
     title = HTML('Food Processors<br>Index Score'),
     group = "Food_Processors",
-    className = "info legend Food_Processors") %>%
+    className = "info legend Food_Processors",
+    na.label = "No data"
+    ) %>%
   addLegend(
     "bottomright",
     pal = pal_generator(
@@ -782,7 +790,9 @@ my_map %>%
     values = infrastructure$composite,
     title = HTML('Infrastructure<br>Index Score'),
     group = "Infrastructure",
-    className = "info legend Infrastructure") %>%
+    className = "info legend Infrastructure",
+    na.label = "No data"
+    ) %>%
   addLegend(
     "bottomright",
     pal = pal_generator(food_insecurity),
@@ -790,7 +800,9 @@ my_map %>%
     values = food_insecurity$composite,
     title = HTML('Food Security<br>Index Score'),
     group = "Food_Security",
-    className = "info legend Food_Security") %>%
+    className = "info legend Food_Security",
+    na.label = "No data"
+    ) %>%
   addLegend(
     "bottomright",
     pal = pal_generator(
@@ -800,7 +812,9 @@ my_map %>%
     values = population$composite,
     title = HTML('Population<br>Index Score'),
     group = "Population",
-    className = "info legend Population") %>%
+    className = "info legend Population",
+    na.label = "No data"
+    ) %>%
   addLayersControl(
     baseGroups = c(
       "Agricultural_Resources",
@@ -836,6 +850,10 @@ my_map %>%
 
 ##### Poverty rate
 
+Count-level poverty rates were sourced from the 2022 US Census.[^14]
+
+[^14]: U.S. Census Bureau. (n.d.). *SAIPE State and County Estimates for 2022*. Retrieved March 27, 2024, from <https://data.census.gov/>
+
 ```{r poverty data grab}
 
 ## Poverty
@@ -855,14 +873,14 @@ pov_sf <- counties %>%
   st_transform(4326)
 ```
 
-Data on county-level poverty rates were obtained from the 2022 US Census.
-
 ##### Farmland proportion
 
 ```{r ag proportion data grab}
 
+View(tidyUSDA::allDataItem)
+
 ## Ag proportion
-ag_acres <- getQuickstat(
+cropland_acres_df <- getQuickstat(
   key = ag_census_api_key,
   program = "CENSUS",
   data_item = "AG LAND, CROPLAND - ACRES",
@@ -870,22 +888,37 @@ ag_acres <- getQuickstat(
   domain = "TOTAL",
   year = "2022",
   geometry = TRUE,
-  lower48 = TRUE)
+  lower48 = TRUE) %>%
+  select(GEOID, NAMELSAD, Value) %>%
+  rename(cropland_acres = Value)
 
-ag_acres <- ag_acres %>%
-  mutate(area_meters = st_area(ag_acres),
-         county_acres = area_meters * 0.000247105)
+pasture_acres_df <- getQuickstat(
+  key = ag_census_api_key,
+  program = "CENSUS",
+  data_item = "AG LAND, PASTURELAND - ACRES",
+  geographic_level = "COUNTY",
+  domain = "TOTAL",
+  year = "2022",
+  geometry = TRUE,
+  lower48 = TRUE) %>%
+  st_drop_geometry() %>%
+  select(GEOID, Value) %>%
+  rename(pasture_acres = Value)
 
-ag_acres$county_acres <- units::set_units(st_area(ag_acres), "acre")
+ag_acres_df <- cropland_acres_df %>%
+  mutate(area_meters = st_area(cropland_acres_df),
+         county_acres = area_meters * 0.000247105) %>%
+  merge(pasture_acres, by = 'GEOID') %>%
+  mutate(
+    ag_acres = cropland_acres + pasture_acres) %>%
+  select(GEOID, NAMELSAD, county_acres, ag_acres)
 
-ag_land <- ag_acres %>%
-  select(GEOID, NAMELSAD, Value, county_acres) %>%
+ag_acres_df$county_acres <- units::set_units(st_area(ag_acres_df), "acre")
+
+ag_land <- ag_acres_df %>%
+  select(GEOID, NAMELSAD, ag_acres, county_acres) %>%
   drop_na() %>%
-  rename(
-    ag_acres = Value,
-    county_name = NAMELSAD,
-    fips = GEOID
-    ) %>%
+  rename(fips = GEOID) %>%
   mutate(ag_proportion = round(ag_acres / county_acres * 100), 1) %>%
   select(fips, ag_proportion) %>%
   drop_units() %>%
@@ -896,7 +929,9 @@ ag_land_sf <- counties %>%
   st_transform(4326)
 ```
 
-Data on total agricultural land were obtained from the 2022 Census of Agriculture.
+Data on total agricultural land were obtained from the 2022 Census of Agriculture.[^15]
+
+[^15]: 2022 Census of Agriculture. QuickStats, State and County Data. \[Washington, D.C.\] :United States Department of Agriculture, National Agricultural Statistics Service, 2014.
 
 ##### "Rural" and "underserved" classification
 
@@ -912,8 +947,20 @@ underserved_data$FIPS.Code <- sapply(underserved_data$FIPS.Code, add_leading_zer
 underserved_sf <- counties %>%
   mutate(
     is_rural = as.factor(ifelse(fips %in% rural_data$FIPS.Code, 1, 0)),
-    is_underserved = as.factor(ifelse(fips %in% underserved_data$FIPS.Code, 1, 0))
-    ) %>%
+    is_underserved = as.factor(ifelse(fips %in% underserved_data$FIPS.Code, 1, 0)),
+    classification = ifelse(
+      is_rural == 1 & is_underserved == 1, 
+      "Rural and Underserved",
+      ifelse(
+        is_rural == 1 & is_underserved == 0, 
+        "Rural",
+        ifelse(
+          is_rural == 0 & is_underserved == 1, 
+          "Underserved", 
+          "Not rural or underserved"
+        )
+      )
+    )) %>%
   #select(-county_name) %>%
   st_transform(4326)
 
@@ -921,7 +968,9 @@ underserved <- underserved_sf %>%
   st_drop_geometry()
 ```
 
-County-level classifications as "rural" and/or "underserved were obtained from the US Consumer Finance Bureau...
+Data on county-level classification as "rural" and/or "underserved" were obtained from the Consumer Financial Protection Bureau.[^16]
+
+[^16]: <https://www.consumerfinance.gov/rural-or-underserved-tool/>
 
 ##### Rural-Urban Continuum Classification
 
@@ -941,7 +990,9 @@ ruc_sf <- counties %>%
   st_transform(4326)
 ```
 
-The categorization of each county on the rural-urban continuum came from the USDA-ERS...
+The categorization of each county on the rural-urban continuum came from the USDA-ERS.[^17]
+
+[^17]: <https://www.ers.usda.gov/data-products/rural-urban-continuum-codes/>
 
 ##### Exploratory map of additional explanatory variables
 
@@ -949,11 +1000,13 @@ The categorization of each county on the rural-urban continuum came from the USD
 
 ruc_pal <- colorFactor(
   palette = as.vector(paletteer_d("trekcolors::tholian"))[1:9], 
-  domain = ruc_sf$RUCC_2023)
+  domain = ruc_sf$RUCC_2023,
+  na.color = 'grey'
+  )
 
 underserved_pal <- colorFactor(
-  palette= c('#F2EBBBFF', "#09283CFF"), 
-  domain = underserved$is_underserved)
+  palette= c('#d3d3d3', '#9e3547', '#311e3b', '#4279b0'), 
+  domain = underserved_sf$classification)
 
 pov_pal <- colorNumeric(
   palette= as.vector(paletteer_d("MexBrewer::Revolucion")), 
@@ -966,9 +1019,9 @@ ag_pal <- colorNumeric(
   domain = ag_land_sf$ag_proportion
   )
 
-# bivar_pal <- function(n){
-#   return(c('#d3d3d3', '#9e3547', '#4279b0', '#311e3b'))
-# }
+bivar_pal <- function(n){
+  return(c('#d3d3d3', '#9e3547', '#4279b0', '#311e3b'))
+}
 
 # labels <- sprintf(
 #   "<strong>%s</strong><br/>%s",
@@ -991,27 +1044,28 @@ m <- my_map %>%
   ) %>%
   addPolygons(
     data = underserved_sf,
-    fillColor = ~underserved_pal(is_underserved),
+    fillColor = ~underserved_pal(classification),
     color = 'white',
     opacity = 1,
     fillOpacity = 1,
     weight = 0.2,
-    group = 'Underserved',
+    group = 'Rural_Underserved',
     popup = glue(
       "<b>{underserved_sf$county_name}</b><br/>",
-      "Underserved: {underserved_sf$is_underserved}") %>%
+      "Underserved: {underserved_sf$classification}") %>%
       lapply(htmltools::HTML)
   ) %>%
-  # bivariatechoropleths::addBivariateChoropleth(
-  #    map_data = underserved,
-  #    var1_name = is_rural,
-  #    var2_name = is_underserved,
-  #    ntiles= 2,
+  # addBivariateChoropleth(
+  #    map_data = underserved_sf,
+  #    var1_name = 'is_rural',
+  #    var2_name = 'is_underserved',
+  #    ntiles = 2,
   #    var1_label = "Rural",
   #    var2_label = "Underserved",
   #    weight = 1,
-  #    fillOpacity = 1,
+  #    fillOpacity = 0.7,
   #    color = "grey",
+  #    group = "test",
   #    paletteFunction = bivar_pal, #pals::stevens.pinkblue,
   #    highlightOptions = leaflet::highlightOptions(color = "orange",
   #                                                 weight = 2,
@@ -1052,17 +1106,20 @@ m <- my_map %>%
     labels = c('Most Urban',"","","","","","","","Most Rural"),
     title = HTML('Rural-Urban<br>Continuum Class'),
     group = "RUC",
-    className = "info legend RUC"
+    className = "info legend RUC",
+    na.label = 'No data'
     ) %>%
   addLegend(
     "bottomright",
     opacity = 1,
-    values = ruc_sf$RUCC_2023,
-    colors = c('#F2EBBBFF', "#09283CFF"),
-    labels = c('Not Undereserved', "Underserved"),
-    title = HTML('Classification'),
-    group = "Underserved",
-    className = "info legend Underserved"
+    values = underserved_sf$classification,
+    #colors = c('#F2EBBBFF', "#09283CFF"),
+    pal = underserved_pal,
+    #labels = c('Not Undereserved', "Underserved"),
+    title = "", #HTML('Classification'),
+    group = "Rural_Underserved",
+    className = "info legend Rural_Underserved",
+    na.label = 'No data'
     ) %>%
   addLegend(
     "bottomright",
@@ -1072,7 +1129,8 @@ m <- my_map %>%
     #labels = c('Not Undereserved', "Underserved"),
     title = HTML('Poverty Rate'),
     group = "Poverty",
-    className = "info legend Poverty"
+    className = "info legend Poverty",
+    na.label = 'No data'
     ) %>%
   addLegend(
     "bottomright",
@@ -1083,6 +1141,7 @@ m <- my_map %>%
     title = HTML('Land in Ag'),
     group = "Ag_Proportion",
     className = "info legend Ag_Proportion",
+    na.label = 'No data',
     labFormat = labelFormat(
       suffix = "%"
     )
@@ -1091,7 +1150,7 @@ m <- my_map %>%
     baseGroups = c(
       "Poverty",
       "RUC",
-      "Underserved",
+      "Rural_Underserved",
       "Ag_Proportion"
     ),
     options = layersControlOptions(collapsed = TRUE)
@@ -1115,9 +1174,6 @@ m <- my_map %>%
 
 m
 
-# htmlwidgets::saveWidget(m, "temp.html", selfcontained = FALSE)
-# webshot("temp.html", file = "Rplot.png",
-#         cliprect = "viewport")
 ```
 
 ```{r combine all data for PCA}
