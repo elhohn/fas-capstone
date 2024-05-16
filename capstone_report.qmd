@@ -1448,7 +1448,6 @@ After disposing of all principal components with eigenvalues less than one, five
 #| fig-align: center
 #| fig-width: 10
 #| fig-height: 10
-#| out-width: 100%
 
 ## PCA
 res.pca <- prcomp(d, scale = TRUE)
@@ -1586,7 +1585,11 @@ rotated_data <- data.frame(res.pca$x[,1:k])
 #ggsave("pca_plot.png", plot = p, width = 6000, height = 3000, units = 'px')
 ```
 
-#### Principal components
+#### Discussion of retained principal components
+
+The ten retained principal components were renamed according to their contributing variables.
+
+Names: "pc1_education""pc2_arts", "pc3_conservation1", "pc4_farmland1", "pc5_infrastructure", "pc6_farmland2", "pc7_manufacturing", "pc8_conservation2", "pc9_foodbev", "pc10_civics"
 
 ```{r rename principal component variables}
 
@@ -1598,9 +1601,19 @@ newnames = c("pc1_education", "pc2_arts", "pc3_conservation1", "pc4_farmland1",
 reduced_d <- rotated_data %>% rename_at(vars(all_of(oldnames)), ~ newnames)
 ```
 
-## Cluster analysis
+### Cluster analysis
+
+Another approach to dealing with the large number of variables that may be related to LAMP grant funding is to use a clustering algorithm to find groups of counties that are similar across many variables.
+
+The optimal number of clusters was determined using the "elbow method", which works by running k-means clustering using a range of K values (1:20 was used in this analysis), calculating the average score for each cluster, and plotting the mean distance. The optimal value of K is the point where the rate of decrease in distortion or inertia shifts, known as the "elbow".
+
+##### "Elbow plot"
 
 ```{r cluster analysis}
+#| fig-align: center
+#| fig-width: 15
+#| fig-height: 5
+#| out-width: 50%
 
 # df <- df %>% 
 #   column_to_rownames(., var = "GEOID") %>%
