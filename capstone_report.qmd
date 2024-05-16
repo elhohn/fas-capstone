@@ -14,6 +14,8 @@ format:
     max-width: 2400px
     margin-left: 0px
     margin-right: 0px
+    toc: true
+    toc-expand: 2
     #page-layout: custom
 fig-align: center
 editor: visual
@@ -1703,15 +1705,15 @@ plot_creator <- function(pc_n) {
     values=c("transparent", "darkgreen"),
     labels = c("Did not receive\nLAMP funding", "Received\nLAMP funding")) +
   #theme_minimal() +
-  labs(title = var,
-       #x ="Social Capital Cluster", 
-       #y = "Social Capital Index",
-       color = "") +
+  # labs(title = var,
+  #      #x ="Social Capital Cluster", 
+  #      #y = "Social Capital Index",
+  #      color = "") +
   xlab("cluster number") +
   theme(
     legend.position="none",
-    plot.title=element_text(family='Roboto', face='bold', size=20),
-    plot.margin = margin(t = 0,  # Top margin
+    #plot.title=element_text(family='Roboto', face='bold', size=20),
+    plot.margin = margin(t = 60,  # Top margin
                          r = 0,  # Right margin
                          b = 0,  # Bottom margin
                          l = 0)
@@ -1735,9 +1737,9 @@ table_creator <- function(pc_n) {
     select(cluster, count, `mean (sd)`) %>%
     tableGrob(
       theme=ttheme_minimal(
-        base_size = 12,
+        base_size = 15,
         base_family = 'Roboto Mono',
-        core = list(padding=unit(c(0, 3), "mm"))
+        core = list(padding=unit(c(1, 3), "mm"))
       ), 
       rows=NULL
       )
@@ -1764,21 +1766,156 @@ p9 <- plot_creator(9)
 t10 <- table_creator(10)
 p10 <- plot_creator(10)
 
-plot_layout <- 
-  "AB
-   CD
-   EF
-   GH
-   IJ
-   KL
-   MN
-   OP
-   QR
-   ST
-      "  
-  
-wrap_plots(p1, t1, p2, t2, p3, t3, p4, t4, p5, t5, p6, t6,
-           p7, t7, p8, t8, p9, t9, p10, t10, design = plot_layout)
+# plot_layout <- 
+#   "AB
+#    CD
+#    EF
+#    GH
+#    IJ
+#    KL
+#    MN
+#    OP
+#    QR
+#    ST
+#       "  
+#   
+# wrap_plots(p1, t1, p2, t2, p3, t3, p4, t4, p5, t5, p6, t6,
+#            p7, t7, p8, t8, p9, t9, p10, t10, design = plot_layout)
+
+plot_design <- 
+  "
+  AB
+  "
+```
+
+::: {#plot_header style="background-color:#bbc5c6; font-weight: 600; font-family: system-ui;"}
+Principal Component #1 - Education
+:::
+
+```{r education plot}
+#| fig-align: center
+#| fig-width: 10
+#| fig-height: 5
+
+wrap_plots(p1, t1, design = plot_design)
+
+```
+
+::: {style="background-color:#bbc5c6; font-weight: 600; font-family: system-ui;"}
+Principal Component #2 - Arts
+:::
+
+```{r arts plot}
+#| fig-align: center
+#| fig-width: 10
+#| fig-height: 5
+
+wrap_plots(p2, t2, design = plot_design)
+
+```
+
+::: {style="background-color:#bbc5c6; font-weight: 600; font-family: system-ui;"}
+Principal Component #3 - Conservation1
+:::
+
+```{r conservation1 plot}
+#| fig-align: center
+#| fig-width: 10
+#| fig-height: 5
+
+wrap_plots(p3, t3, design = plot_design)
+
+
+```
+
+::: {style="background-color:#bbc5c6; font-weight: 600; font-family: system-ui;"}
+Principal Component #4 - Farmland1
+:::
+
+```{r farmland1 plot}
+#| fig-align: center
+#| fig-width: 10
+#| fig-height: 5
+
+wrap_plots(p4, t4, design = plot_design)
+
+```
+
+::: {style="background-color:#bbc5c6; font-weight: 600; font-family: system-ui;"}
+Principal Component #5 - Infrastructure
+:::
+
+```{r infrastructure plot}
+#| fig-align: center
+#| fig-width: 10
+#| fig-height: 5
+
+wrap_plots(p5, t5, design = plot_design)
+
+```
+
+::: {style="background-color:#bbc5c6; font-weight: 600; font-family: system-ui;"}
+Principal Component #6 - Farmland2
+:::
+
+```{r farmland2 plot}
+#| fig-align: center
+#| fig-width: 10
+#| fig-height: 5
+
+wrap_plots(p6, t6, design = plot_design)
+
+```
+
+::: {style="background-color:#bbc5c6; font-weight: 600; font-family: system-ui;"}
+Principal Component #7 - Manufacturing
+:::
+
+```{r manufacturing plot}
+#| fig-align: center
+#| fig-width: 10
+#| fig-height: 5
+
+wrap_plots(p7, t7, design = plot_design)
+
+```
+
+::: {style="background-color:#bbc5c6; font-weight: 600; font-family: system-ui;"}
+Principal Component #8 - Conservation2
+:::
+
+```{r conservation2 plot}
+#| fig-align: center
+#| fig-width: 10
+#| fig-height: 5
+
+wrap_plots(p8, t8, design = plot_design)
+
+```
+
+::: {style="background-color:#bbc5c6; font-weight: 600; font-family: system-ui;"}
+Principal Component #9 - Food and Beverage
+:::
+
+```{r food and bev plot}
+#| fig-align: center
+#| fig-width: 10
+#| fig-height: 5
+
+wrap_plots(p9, t9, design = plot_design)
+
+```
+
+::: {style="background-color:#bbc5c6; font-weight: 600; font-family: system-ui;"}
+Principal Component #10 - Civics
+:::
+
+```{r arts civis}
+#| fig-align: center
+#| fig-width: 10
+#| fig-height: 5
+
+wrap_plots(p10, t10, design = plot_design)
 
 ```
 
