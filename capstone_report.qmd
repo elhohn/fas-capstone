@@ -100,7 +100,7 @@ subsetter <- function(topic) {
       across(all_of(cols), normalize))
 
   d$mean <- rowMeans(d[,cols], na.rm = TRUE)
-  d$composite <- rescale(d$mean, to = c(0, 100))
+  d$percentile <- ntile(d$mean, 100)
   
   d <- counties %>%
     merge(d, by = 'fips', all = TRUE) %>%
@@ -116,7 +116,7 @@ pca_prep <- function(d){
   d <- d %>%
     st_drop_geometry() %>%
     drop_na() %>%
-    select(-c(GEOID, county_name, overall))
+    select(-c(GEOID, county_name, percentile))
   return(d)
 }
 
@@ -445,7 +445,8 @@ A variety of socioeconomic and environmental factors were investigated to assess
 ## Community Wealth
 comm_wealth_url <- 'https://raw.githubusercontent.com/CSU-Local-and-Regional-Food-Systems/USDA-AMS-Data-and-Metrics/main/Indicators%20of%20Community%20Wealth/community_wealth.csv'
 comm_wealth_all <- read.csv(comm_wealth_url) %>%
-  filter(fips > 100) # remove national level rows
+  filter(fips > 100) %>%
+  filter(!county_name %in% c('Menominee County', 'Kidder County'))# remove national level rows 
 
 # Function to add leading 0 to 4-digit fips values in comm_wealth to facilitate later joins
 add_leading_zero <- function(x) {
@@ -599,15 +600,22 @@ agriculture <- subsetter("Agriculture")
 
 #### Distribution of community wealth metrics
 
+For each category listed in the table above, all metrics within that category were normalized then averaged in order to create an overall category percentile score. The colors in each category map layer below correspond to this percentile score.
+
 ```{r wealth map}
 #| warnings: false
 
-bins <- seq(from = 0, to = 1, by = 0.2)
-pal <- colorBin("YlOrRd", domain = 0:1, bins = bins)
+bins <- seq(from = 0, to = 100, by = 20)
+pal <- colorBin("YlOrRd", domain = 0:100, bins = bins)
 
 pal_generator <- function(d, pal = 'RdPu') {
-  return(colorQuantile(palette = pal, domain = d$overall, n = 6, na.color = 'grey'))
+  return(colorQuantile(palette = pal, domain = d$percentile, n = 5, na.color = 'grey'))
 }
+
+# test_pal <- colorQuantile(
+#   pal = 'RdPu',
+#   domain = agriculture$
+# )
 
 label_generator <- function(d) {
   d_name <- deparse(substitute(d))
@@ -621,21 +629,21 @@ label_generator <- function(d) {
 }
 
 my_map %>%
-  addPolygons(
-    data = natural,
-    weight = 0.5,
-    color = 'white',
-    fillOpacity = 1,
-    fillColor = pal_generator(
-      natural, 
-      as.vector(paletteer_d("MetBrewer::Hokusai2")))(natural$composite),
-    group = "Natural_Resources",
-    popup = label_generator(natural),
-    popupOptions = popupOptions(
-      #keepInView = TRUE,
-      closeOnClick = TRUE
-    )
-  ) %>%
+  # addPolygons(
+  #   data = natural,
+  #   weight = 0.5,
+  #   color = 'white',
+  #   fillOpacity = 1,
+  #   fillColor = pal_generator(
+  #     natural, 
+  #     as.vector(paletteer_d("MetBrewer::Hokusai2")))(natural$percentile),
+  #   group = "Natural_Resources",
+  #   popup = label_generator(natural),
+  #   popupOptions = popupOptions(
+  #     #keepInView = TRUE,
+  #     closeOnClick = TRUE
+  #   )
+  # ) %>%
   addPolygons(
     data = agriculture,
     weight = 0.5,
@@ -644,7 +652,7 @@ my_map %>%
     fillColor = pal_generator(
       agriculture,
       as.vector(paletteer_d("MetBrewer::VanGogh3"))
-      )(agriculture$composite),
+      )(agriculture$percentile),
     group = "Agricultural_Resources",
     popup = label_generator(agriculture)
     ) %>%
@@ -656,7 +664,7 @@ my_map %>%
     fillColor = pal_generator(
       financial,
       as.vector(paletteer_d("MetBrewer::OKeeffe2"))
-    )(financial$composite),
+    )(financial$percentile),
     group = "Financial_Resources",
     popup = label_generator(financial)
     ) %>%
@@ -668,7 +676,7 @@ my_map %>%
     fillColor = pal_generator(
       community_resources,
       'YlGnBu'
-      )(community_resources$composite),
+      )(community_resources$percentile),
     group = "Community_Resources",
     popup = label_generator(community_resources)
     ) %>%
@@ -680,7 +688,7 @@ my_map %>%
     fillColor = pal_generator(
       infrastructure,
       as.vector(paletteer_d("Redmonder::sPBIRdPu"))
-      )(infrastructure$composite),
+      )(infrastructure$percentile),
     group = "Infrastructure",
     popup = label_generator(infrastructure)
     ) %>%
@@ -689,7 +697,7 @@ my_map %>%
     weight = 0.5,
     color = 'white',
     fillOpacity = 1,
-    fillColor = pal_generator(food_insecurity)(food_insecurity$composite),
+    fillColor = pal_generator(food_insecurity)(food_insecurity$percentile),
     group = "Food_Security",
     popup = label_generator(food_insecurity)
     ) %>%
@@ -701,7 +709,7 @@ my_map %>%
     fillColor = pal_generator(
       population,
       as.vector('YlOrBr')
-      )(population$composite),
+      )(population$percentile),
     group = "Population",
     popup = label_generator(population)
     ) %>%
@@ -713,7 +721,7 @@ my_map %>%
     fillColor = pal_generator(
       food_processors,
       as.vector(paletteer_d("Redmonder::sPBIYlGn"))
-      )(food_processors$composite),
+      )(food_processors$percentile),
     group = "Food_Processors",
     popup = label_generator(food_processors)
     ) %>%
@@ -723,8 +731,8 @@ my_map %>%
       natural, 
       as.vector(paletteer_d("MetBrewer::Hokusai2"))),
     opacity = 1,
-    values = natural$composite,
-    title = HTML('Natural Resources<br>Index Score'),
+    values = natural$percentile,
+    #title = HTML('Natural Resources<br>Index Score'),
     group = "Natural_Resources",
     className = "info legend Natural_Resources",
     na.label = "No data"
@@ -735,8 +743,8 @@ my_map %>%
       agriculture, 
       as.vector(paletteer_d("MetBrewer::VanGogh3"))),
     opacity = 1,
-    values = agriculture$composite,
-    title = HTML('Agricultural Resources<br>Index Score'),
+    values = agriculture$percentile,
+    #title = HTML('Agricultural Resources<br>Index Score'),
     group = "Agricultural_Resources",
     className = 'info legend Agricultural_Resources',
     na.label = "No data"
@@ -748,8 +756,8 @@ my_map %>%
       as.vector(paletteer_d("MetBrewer::OKeeffe2"))
       ),
     opacity = 1,
-    values = financial$composite,
-    title = HTML('Financial Resources<br>Index Score'),
+    values = financial$percentile,
+    #title = HTML('Financial Resources<br>Index Score'),
     group = "Financial_Resources",
     className = "info legend Financial_Resources",
     na.label = "No data"
@@ -761,8 +769,8 @@ my_map %>%
       'YlGnBu'
       ),
     opacity = 1,
-    values = community_resources$composite,
-    title = HTML('Commnunity Resources<br>Index Score'),
+    values = community_resources$percentile,
+    #title = HTML('Commnunity Resources<br>Index Score'),
     group = "Community_Resources",
     className = 'info legend Community_Resources',
     na.label = "No data"
@@ -774,8 +782,8 @@ my_map %>%
       as.vector(paletteer_d("Redmonder::sPBIYlGn"))
       ),
     opacity = 1,
-    values = food_processors$composite,
-    title = HTML('Food Processors<br>Index Score'),
+    values = food_processors$percentile,
+    #title = HTML('Food Processors<br>Index Score'),
     group = "Food_Processors",
     className = "info legend Food_Processors",
     na.label = "No data"
@@ -787,8 +795,8 @@ my_map %>%
       as.vector(paletteer_d("Redmonder::sPBIRdPu"))
     ),
     opacity = 1,
-    values = infrastructure$composite,
-    title = HTML('Infrastructure<br>Index Score'),
+    values = infrastructure$percentile,
+    #title = HTML('Infrastructure<br>Index Score'),
     group = "Infrastructure",
     className = "info legend Infrastructure",
     na.label = "No data"
@@ -797,8 +805,8 @@ my_map %>%
     "bottomright",
     pal = pal_generator(food_insecurity),
     opacity = 1,
-    values = food_insecurity$composite,
-    title = HTML('Food Security<br>Index Score'),
+    values = food_insecurity$percentile,
+    #title = HTML('Food Security<br>Index Score'),
     group = "Food_Security",
     className = "info legend Food_Security",
     na.label = "No data"
@@ -809,8 +817,8 @@ my_map %>%
       population, "YlOrBr"
       ),
     opacity = 1,
-    values = population$composite,
-    title = HTML('Population<br>Index Score'),
+    values = population$percentile,
+    #title = HTML('Population<br>Index Score'),
     group = "Population",
     className = "info legend Population",
     na.label = "No data"
@@ -826,7 +834,7 @@ my_map %>%
       "Financial_Resources",
       "Natural_Resources"
     ),
-    options = layersControlOptions(collapsed = TRUE)
+    options = layersControlOptions(collapsed = FALSE)
   ) %>%
     htmlwidgets::onRender(
       "
@@ -1052,7 +1060,7 @@ m <- my_map %>%
     group = 'Rural_Underserved',
     popup = glue(
       "<b>{underserved_sf$county_name}</b><br/>",
-      "Underserved: {underserved_sf$classification}") %>%
+      "Status: {underserved_sf$classification}") %>%
       lapply(htmltools::HTML)
   ) %>%
   # addBivariateChoropleth(
@@ -1189,13 +1197,14 @@ d <- comm_wealth %>%
   merge(ruc, by = 'fips') %>%
   merge(underserved, by = 'fips') %>%
   merge(pov, by = 'fips') %>%
-  merge(ag_land, by = 'fips')
+  merge(ag_land, by = 'fips') %>%
+  filter(!county_name %in% c('Menominee County', 'Kidder County'))
 
 rownames(d) <- d$fips
 
 # remove non-numeric variables and add them back after PCA
 d_factors <- d %>%
-  select_if(is.factor)
+  select_if(is.factor) 
 
 d <- d %>% 
   select(-fips) %>% 
