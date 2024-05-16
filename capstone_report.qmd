@@ -1219,9 +1219,13 @@ for(i in 1:ncol(d)){
 
 The USDA aims to make LAMP grants available to all eligible communities across the US and its territories. To effectively distribute these grants, USDA considers various factors, such as potential for job creation, improvement in local food supply chains, and enhancement of local economies, with an intended focus on underserved communities and regions with limited market access.
 
-This analysis
+With this in mind, the relationship between LAMP awards and community characteristics are evaluated in order to determine if there are gaps in the distribution of grant money across communities, and if such a gap is identified, what characteristics describe the communities within this gap. This information could help AMS determine what interventions may be necessary to fill these gaps.
 
-##### Plotting each variable against total LAMP award money received
+#### Plotting each variable against total LAMP award money received
+
+As a first step in assessing this relationship, each of the community characteristics described above are plotted against the total per capita LAMP funding received. Each point represents a county. The x axis of each plot is the value for variable described in the sub-plot header (e.g., "acres in conservation"), and the y axis is the total per capita LAMP funding.
+
+##### Per capita LAMP grants received vs community characteristics
 
 ```{r prepping wealth vs award data}
 
@@ -1377,7 +1381,10 @@ d3 <- d3 %>%
   select(-variable) %>%
   rename(variable = new_vars)
 
-d3 <- d3 %>% mutate(value = as.numeric(value))
+d3 <- d3 %>% mutate(value = as.numeric(value)) %>%
+  filter(
+    county_name != "Shannon County" & variable != "Non profits"
+  )
 
 # Create a scatter plot with facets
 p <- ggplot(d3 %>% filter(variable != "Total LAMP funding") %>% ungroup(),
@@ -1386,13 +1393,15 @@ p <- ggplot(d3 %>% filter(variable != "Total LAMP funding") %>% ungroup(),
      geom_point(aes(color = variable#,
                 #text = paste("County:", county_name)
                 ),
-                alpha = 0.5, size = 2) +
-     geom_smooth(method = 'lm', se = FALSE, color = 'grey25', linewidth = .4) +
-     scale_color_manual(values = ggsci::pal_igv("default")(length(unique(d3$variable))-1)) +
+                alpha = 0.4, size = 1.5) +
+     geom_smooth(aes(color = variable, fill = variable), 
+                 method = 'lm', fullrange = TRUE, linewidth = .4) +
+     scale_color_manual(values = ggsci::pal_igv("default")(length(unique(d3$variable)))) +
+     scale_fill_manual(values = ggsci::pal_igv("default")(length(unique(d3$variable)))) +
      facet_wrap(~ variable, ncol = 6, scales = 'free_x') +
      labs(title = 'Community Wealth Indices vs LAMP $ Per Capita, 2016-2022',
-          x = 'Total Award $ Per Capita, 2016-2022',
-          y = '',
+          y = 'Total Award $ Per Capita, 2016-2022',
+          x = '',
           caption = "Note: two counties, Menominee County (Michigan) and Kidder County (North Dakota), were removed from the dataset used for this plot because they were identified as outliers."
           ) +
      #ylim(0, 1) +
@@ -1408,19 +1417,43 @@ p
 #ggsave("myplot.png", plot = p, width = 6000, height = 3000, units = 'px')
 ```
 
-### Dimension reduction with PCA
+### Principal Component Analysis (PCA)
 
-Started with 44 variables, which were reduced to 10 using a principal components analysis.
+Principal Component Analysis (PCA) is a technique used to reduce the dimensionality of multivariate data sets. It aims to simplify the data by reducing the number of variables into a smaller number of components, while still retaining as much variation from the original variables as possible, thereby allowing for a more concise expression of a larger set of variables.
+
+In the context of this analysis, PCA is thought to be an appropriate approach because of the thematic overlap among groups of variables, implying that multicolinearity may be an issue. Indeed, a correlation matrix of all variables shows a number of highly correlated variables within the dataset.
+
+##### Correlation matrix
+
+```{r correlation pre-PCA}
+
+d_corr <- d3 %>%
+  distinct() %>%
+  pivot_wider(names_from = variable, values_from = value)  %>%
+  st_drop_geometry() %>%
+  select(-c(fips, award_per_capita, lamp_funded, county_name)) 
+
+correlation <- cor(d_corr, use = "complete.obs")
+corrplot(correlation, method = 'square', tl.cex = 0.5, tl.col = 'black', tl.srt = 45,
+         cl.cex = 0.6,
+         type = 'upper', order = "hclust")
+
+```
+
+After disposing of all principal components with eigenvalues less than one, five principal components remained. The plots below show the main variables contributing to each of the 10 principal components.
+
+##### Key variables contributing to each principal component
 
 ```{r principal components analysis}
 #| fig-align: center
 #| fig-width: 10
-#| fig-height: 15
+#| fig-height: 10
 #| out-width: 100%
 
-## PCA v2
+## PCA
 res.pca <- prcomp(d, scale = TRUE)
-#summary(res.pca)
+#pca_summary <- summary(res.pca)
+
 #fviz_eig(res.pca, col.var="blue", ncp = 25)
 
 var <- get_pca_var(res.pca)
@@ -1428,9 +1461,6 @@ var <- get_pca_var(res.pca)
 
 eig_vals <- res.pca$sdev
 k <- length(eig_vals[eig_vals >= 1])
-
-#var <- get_pca_var(res.pca)
-#corrplot(var$cos2[,1:k], is.corr=FALSE)
 
 # fviz_pca_var(res.pca,
 #              col.var = "cos2", # Color by the quality of representation
@@ -1598,7 +1628,7 @@ fviz_nbclust(df_scaled, kmeans, method = "wss", k.max = 20) +
 
 km <- kmeans(df_scaled, centers = 11) # centers specify number of clusters
 #km
-fviz_cluster(km, df_scaled, ggtheme = theme_minimal())
+#fviz_cluster(km, df_scaled, ggtheme = theme_minimal())
 
 # print(result$All.index)
 # # result$Best.nc
@@ -1677,7 +1707,7 @@ p <- ggplot(clustered_melted,
 
 p
 
-ggsave("cluster_plot.png", plot = p, width = 5000, height = 2200, units = 'px')
+#ggsave("cluster_plot.png", plot = p, width = 5000, height = 2200, units = 'px')
 ```
 
 ### Dimension reduction
@@ -1685,6 +1715,12 @@ ggsave("cluster_plot.png", plot = p, width = 5000, height = 2200, units = 'px')
 Use principal component analysis (PCA) to reduce dimensionality of datasets and retain only most important information.
 
 ## Regression
+
+The regression looks something like the following:
+
+$$
+\begin{equation}\hat{Y}_i = \hat{\beta}_0 + \hat{\beta}_1 X_i + \hat{\epsilon}_i\end{equation}
+$$
 
 ```{r regression analysis all vars}
 
