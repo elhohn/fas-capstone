@@ -59,6 +59,8 @@ library(extrafont)
 library(ggdist)
 library(lubridate)
 library(gt)
+library(gridExtra)
+library(patchwork)
 
 
 census_api_key(Sys.getenv("CENSUS_API_KEY"))
@@ -1613,7 +1615,7 @@ The optimal number of clusters was determined using the "elbow method", which wo
 #| fig-align: center
 #| fig-width: 15
 #| fig-height: 5
-#| out-width: 50%
+#| out-width: 70%
 
 # df <- df %>% 
 #   column_to_rownames(., var = "GEOID") %>%
@@ -1660,25 +1662,143 @@ clustered <- reduced_d %>%
     )
 ```
 
-## Cluster exploration
+#### Cluster exploration
+
+```{r kmeans summaries}
+#| fig-align: center
+#| fig-width: 10
+#| fig-height: 35
+
+within_ss <- km$withinss
+cluster_size <- km$size
+
+clustered_melted2 <- reshape2::melt(
+  clustered, id.vars = c('cluster', 'lamp_funded'))
+
+cdf <- clustered %>%
+  group_by(cluster) %>%
+  summarise_if(is.numeric, list(mean = mean, sd = sd), na.rm = TRUE)
+
+cdf$count <- cluster_size
+cdf$cluster <- factor(cdf$cluster, levels=c(11,10,9,8,7,6,5,4,3,2,1))
+
+plot_creator <- function(pc_n) {
+  
+  var <- as.vector(
+    unique(clustered_melted2$variable))[grep(paste0("pc", pc_n, "_"), as.vector(unique(clustered_melted2$variable)))]
+
+  clustered_melted2 %>%
+  mutate(cluster = factor(cluster, levels = c(11,10,9,8,7,6,5,4,3,2,1))) %>%
+  filter(grepl(paste0("pc", pc_n, "_"), variable)) %>%
+  ggplot(aes(x=cluster, y=value),
+         shape = 21) +
+  geom_jitter(aes(color = factor(lamp_funded), fill = factor(cluster)),
+              shape=21, size = 1, alpha = 0.5, stroke = 0.4) +
+  geom_boxplot(aes(group = cluster), fill = 'transparent',
+               outlier.color = 'darkred', outlier.shape = 4) +
+  coord_flip() +
+  scale_fill_manual(
+    values = as.vector(paletteer_d("rcartocolor::Prism"))[1:length(unique(clustered_melted2$cluster))]) +
+  scale_colour_manual(
+    values=c("transparent", "darkgreen"),
+    labels = c("Did not receive\nLAMP funding", "Received\nLAMP funding")) +
+  #theme_minimal() +
+  labs(title = var,
+       #x ="Social Capital Cluster", 
+       #y = "Social Capital Index",
+       color = "") +
+  xlab("cluster number") +
+  theme(
+    legend.position="none",
+    plot.title=element_text(family='Roboto', face='bold', size=20),
+    plot.margin = margin(t = 0,  # Top margin
+                         r = 0,  # Right margin
+                         b = 0,  # Bottom margin
+                         l = 0)
+  )
+}
+
+table_creator <- function(pc_n) {
+  mean_col <- colnames(cdf)[grepl(paste0("pc", pc_n, "_"), colnames(cdf))][1]
+  sd_col <- colnames(cdf)[grepl(paste0("pc", pc_n, "_"), colnames(cdf))][2]
+  cdf %>%
+    select(cluster, count, dplyr::starts_with(paste0("pc", pc_n, "_"))) %>%
+    mutate(mean = round(!!sym(mean_col), 2),
+           sd = round(!!sym(sd_col), 2)) %>%
+    # rename(
+    #   mean = !!sym(mean_col),
+    #   sd = !!sym(sd_col)
+    # ) %>%
+    mutate(
+      `mean (sd)` = paste0(as.character(mean), " (", as.character(sd), ")")
+    ) %>%
+    select(cluster, count, `mean (sd)`) %>%
+    tableGrob(
+      theme=ttheme_minimal(
+        base_size = 12,
+        base_family = 'Roboto Mono',
+        core = list(padding=unit(c(0, 3), "mm"))
+      ), 
+      rows=NULL
+      )
+}
+
+t1 <- table_creator(1)
+p1 <- plot_creator(1)
+t2 <- table_creator(2)
+p2 <- plot_creator(2)
+t3 <- table_creator(3)
+p3 <- plot_creator(3)
+t4 <- table_creator(4)
+p4 <- plot_creator(4)
+t5 <- table_creator(5)
+p5 <- plot_creator(5)
+t6 <- table_creator(6)
+p6 <- plot_creator(6)
+t7 <- table_creator(7)
+p7 <- plot_creator(7)
+t8 <- table_creator(8)
+p8 <- plot_creator(8)
+t9 <- table_creator(9)
+p9 <- plot_creator(9)
+t10 <- table_creator(10)
+p10 <- plot_creator(10)
+
+plot_layout <- 
+  "AB
+   CD
+   EF
+   GH
+   IJ
+   KL
+   MN
+   OP
+   QR
+   ST
+      "  
+  
+wrap_plots(p1, t1, p2, t2, p3, t3, p4, t4, p5, t5, p6, t6,
+           p7, t7, p8, t8, p9, t9, p10, t10, design = plot_layout)
+
+```
 
 ```{r clusters summary table}
 
-summary_stats <- clustered %>%
-  group_by(cluster) %>%
-  get_summary_stats() %>%
-  arrange(variable)
-
-brks <- quantile(select(summary_stats, -c(cluster, variable)), probs = seq(.05, .95, .05), na.rm = TRUE)
-clrs <- round(seq(255, 40, length.out = length(brks) + 1), 0) %>%
-  {paste0("rgb(255,", ., ",", ., ")")}
-
-datatable(
-  summary_stats,
-  extensions = 'RowGroup',
-  options = list(rowGroup = list(dataSrc = 2)),
-  selection = 'none'
-) %>% formatStyle(names(summary_stats), backgroundColor = styleInterval(brks, clrs))
+# summary_stats <- clustered %>%
+#   group_by(cluster) %>%
+#   get_summary_stats() %>%
+#   arrange(variable)
+# 
+# brks <- quantile(select(summary_stats, -c(cluster, variable)), probs = seq(.05, .95, .05), na.rm = TRUE)
+# clrs <- round(seq(255, 40, length.out = length(brks) + 1), 0) %>%
+#   {paste0("rgb(255,", ., ",", ., ")")}
+# 
+# datatable(
+#   summary_stats,
+#   extensions = 'RowGroup',
+#   options = list(rowGroup = list(dataSrc = 2)),
+#   selection = 'none'
+# ) %>% formatStyle(names(summary_stats), backgroundColor = styleInterval(brks, clrs))
 
 ```
 
@@ -1686,41 +1806,41 @@ datatable(
 #| fig-width: 10
 #| fig-height: 8
 
-clustered_melted <- reshape2::melt(
-  clustered, id.vars = c('cluster', 'lamp_funded'))
-
-# grp1 <- colnames(df)[1:4]
+# clustered_melted <- reshape2::melt(
+#   clustered, id.vars = c('cluster', 'lamp_funded'))
 # 
-# tests <- df2 %>%
-#   group_by(variable, cluster) %>%
-#   summarize(mean = mean(value))
-
-p <- ggplot(clustered_melted, 
-            aes(x=cluster, y=value), 
-            shape = 21) +
-  geom_jitter(aes(color = factor(lamp_funded), fill = factor(cluster)),
-              shape=21, size = 1, alpha = 0.5, stroke = 0.4) +
-  geom_boxplot(aes(group = cluster), fill = 'transparent',
-               outlier.color = 'darkred', outlier.shape = 4) +
-  scale_fill_manual(
-    values = as.vector(paletteer_d("rcartocolor::Prism"))[1:length(unique(clustered_melted$cluster))]) +
-  scale_colour_manual(
-    values=c("transparent", "darkgreen"),
-    labels = c("Did not receive\nLAMP funding", "Received\nLAMP funding")) +
-  facet_wrap(~ variable, ncol = 3, nrow = 4, scales = 'free_y') +
-  #theme_minimal() +
-  labs(title="County-level principal component values, by cluster",
-       x ="Social Capital Cluster", y = "Social Capital Index",
-       color = "") +
-  theme(
-    legend.position="none",
-    strip.background = element_rect(fill="#2F414BFF"),
-    strip.text = element_text(color = 'grey76', face = 'bold', size = 14)
-  )
-
-p
-
-#ggsave("cluster_plot.png", plot = p, width = 5000, height = 2200, units = 'px')
+# # grp1 <- colnames(df)[1:4]
+# # 
+# # tests <- df2 %>%
+# #   group_by(variable, cluster) %>%
+# #   summarize(mean = mean(value))
+# 
+# p <- ggplot(clustered_melted, 
+#             aes(x=cluster, y=value), 
+#             shape = 21) +
+#   geom_jitter(aes(color = factor(lamp_funded), fill = factor(cluster)),
+#               shape=21, size = 1, alpha = 0.5, stroke = 0.4) +
+#   geom_boxplot(aes(group = cluster), fill = 'transparent',
+#                outlier.color = 'darkred', outlier.shape = 4) +
+#   scale_fill_manual(
+#     values = as.vector(paletteer_d("rcartocolor::Prism"))[1:length(unique(clustered_melted$cluster))]) +
+#   scale_colour_manual(
+#     values=c("transparent", "darkgreen"),
+#     labels = c("Did not receive\nLAMP funding", "Received\nLAMP funding")) +
+#   facet_wrap(~ variable, ncol = 3, nrow = 4, scales = 'free_y') +
+#   #theme_minimal() +
+#   labs(title="County-level principal component values, by cluster",
+#        x ="Social Capital Cluster", y = "Social Capital Index",
+#        color = "") +
+#   theme(
+#     legend.position="none",
+#     strip.background = element_rect(fill="#2F414BFF"),
+#     strip.text = element_text(color = 'grey76', face = 'bold', size = 14)
+#   )
+# 
+# p
+# 
+# #ggsave("cluster_plot.png", plot = p, width = 5000, height = 2200, units = 'px')
 ```
 
 ### Dimension reduction
