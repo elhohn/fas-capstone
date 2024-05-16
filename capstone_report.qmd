@@ -908,7 +908,7 @@ pasture_acres_df <- getQuickstat(
 ag_acres_df <- cropland_acres_df %>%
   mutate(area_meters = st_area(cropland_acres_df),
          county_acres = area_meters * 0.000247105) %>%
-  merge(pasture_acres, by = 'GEOID') %>%
+  merge(pasture_acres_df, by = 'GEOID') %>%
   mutate(
     ag_acres = cropland_acres + pasture_acres) %>%
   select(GEOID, NAMELSAD, county_acres, ag_acres)
