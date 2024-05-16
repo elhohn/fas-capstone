@@ -629,21 +629,21 @@ label_generator <- function(d) {
 }
 
 my_map %>%
-  # addPolygons(
-  #   data = natural,
-  #   weight = 0.5,
-  #   color = 'white',
-  #   fillOpacity = 1,
-  #   fillColor = pal_generator(
-  #     natural, 
-  #     as.vector(paletteer_d("MetBrewer::Hokusai2")))(natural$percentile),
-  #   group = "Natural_Resources",
-  #   popup = label_generator(natural),
-  #   popupOptions = popupOptions(
-  #     #keepInView = TRUE,
-  #     closeOnClick = TRUE
-  #   )
-  # ) %>%
+  addPolygons(
+    data = natural,
+    weight = 0.5,
+    color = 'white',
+    fillOpacity = 1,
+    fillColor = pal_generator(
+      natural,
+      as.vector(paletteer_d("MetBrewer::Hokusai2")))(natural$percentile),
+    group = "Natural_Resources",
+    popup = label_generator(natural),
+    popupOptions = popupOptions(
+      #keepInView = TRUE,
+      closeOnClick = TRUE
+    )
+  ) %>%
   addPolygons(
     data = agriculture,
     weight = 0.5,
