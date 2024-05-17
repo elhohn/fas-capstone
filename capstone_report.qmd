@@ -1,19 +1,20 @@
 ---
-title: "Analyzing the Role of Community and Individual Factors in LAMP Grant Funding: Identifying Diverse Barriers Across Clustered US Counties"
-subtitle: "FAS Food Systems Impact Fellowship Capstone Project, 2024"
-author: "Elliot Hohn\nSr. Agricultural Data Scientist Impact Fellow"
+title: "Analyzing the Role of Community and Individual Factors in LAMP Grant Funding: Identifying Potential Barriers Across US Counties"
+#subtitle: "FAS Food Systems Impact Fellowship Capstone Project, 2024"
+author: "Elliot Hohn<br>Sr. Agricultural Data Scientist Impact Fellow<br>Federation of American Scientists<br>ehohn@fas.org<br><br>May 2024"
 execute:
   echo: false
   warning: false
 format:
   html:
-    theme: simplex
-    fontsize: 1.1em
+    theme: journal
+    fontsize: 1.0em
     linestretch: 1.7
     mainfont: avenir
     max-width: 2400px
     margin-left: 0px
     margin-right: 0px
+    margin-top: 70px
     toc: true
     toc-expand: 2
     #page-layout: full
@@ -174,25 +175,31 @@ theme_flip <-
 
 ### Local Agriculture Market Program (LAMP)
 
-The USDA's Agricultural Marketing Service (AMS) administers a variety of grant programs aimed at strengthening local and regional food systems. The Local Agriculture Market Program (LAMP) is one such program that supports direct producer-to-consumer marketing, food enterprises, and value-added agricultural products. Established under the 2018 Farm Bill, LAMP fosters community collaboration and public-private partnerships to improve regional food economies, aiding in the development of business strategies and infrastructure for local food systems. The Farm Bill provided LAMP \$50 million per year in mandatory funding and the programs received significant supplemental funding through the Consolidated Appropriations Act of 2021 and the American Rescue Plan of 2021.[^1] The major grant programs within LAMP include the [Local Food Promotion Program (LFPP)](https://www.ams.usda.gov/services/grants/lfpp), [Regional Food Systems Partnership (RFSP)](https://www.ams.usda.gov/services/grants/rfsp), and the [Farmers Market Promotion Program (FMPP)](https://www.ams.usda.gov/services/grants/fmpp).
+The USDA's Agricultural Marketing Service (AMS) administers a variety of grant programs aimed at strengthening local and regional food systems. The Local Agriculture Market Program (LAMP) is one such program that supports direct producer-to-consumer marketing, food enterprises, and value-added agricultural products. Established under the 2018 Farm Bill, LAMP fosters community collaboration and public-private partnerships to improve regional food economies, aiding in the development of business strategies and infrastructure for local food systems. The Farm Bill provided LAMP \$50 million per year in mandatory funding and the programs received significant supplemental funding through the Consolidated Appropriations Act of 2021 and the American Rescue Plan of 2021.[^1] The major grant programs within LAMP include the Local Food Promotion Program (LFPP),[^2] Regional Food Systems Partnership (RFSP),[^3] and the Farmers Market Promotion Program (FMPP).[^4]
 
 [^1]: <https://www.ams.usda.gov/sites/default/files/media/LAMP_Report_to_Congress.pdf>
 
-![Promotional materials for LAMP. Image: USDA-AMS, 2024](img/LAMP_Twitter.png){fig-align="center"}
+[^2]: <https://www.ams.usda.gov/services/grants/lfpp>
+
+[^3]: <https://www.ams.usda.gov/services/grants/rfsp>
+
+[^4]: <https://www.ams.usda.gov/services/grants/fmpp>
+
+![Promotional materials for LAMP. Image: USDA-AMS, 2024](img/LAMP_Twitter.png){fig-align="center" width="600"}
 
 ### Building community capital through food systems investment
 
 #### Allocating grant funding
 
-The goals of the LAMP program include: (1) simplify the application processes and the reporting processes for the Program; (2) improve income and economic opportunities for producers and food businesses through job creation; and (3) strengthen capacity and regional food system development through community collaboration and expansion of mid-tier value chains.[^2]
+The goals of the LAMP program include: (1) simplify the application processes and the reporting processes for the Program; (2) improve income and economic opportunities for producers and food businesses through job creation; and (3) strengthen capacity and regional food system development through community collaboration and expansion of mid-tier value chains.[^5]
 
-[^2]: <https://www.ams.usda.gov/services/grants/lamp>. Accessed April 20, 2024
+[^5]: <https://www.ams.usda.gov/services/grants/lamp>. Accessed April 20, 2024
 
 Each program within LAMP includes a set of constraints intended to improve the allocation of resources to specific program activity areas.
 
-In 2021, AMS partnered with Florida A&M University and the University of Maryland Eastern Shore on a project focusing on the following goals[^3]:
+In 2021, AMS partnered with Florida A&M University and the University of Maryland Eastern Shore on a project focusing on the following goals[^6]:
 
-[^3]: <https://www.ams.usda.gov/sites/default/files/media/MSDUSDAAMSGrantApplicantTASociallyDisadvantaged.pdf>
+[^6]: <https://www.ams.usda.gov/sites/default/files/media/MSDUSDAAMSGrantApplicantTASociallyDisadvantaged.pdf>
 
 1.  Evaluate barriers to AMS grant opportunities for socially disadvantaged communities
 
@@ -200,23 +207,23 @@ In 2021, AMS partnered with Florida A&M University and the University of Marylan
 
 3.  Take action to rectify inequalities in program access through targeted outreach, training, and technical assistance.
 
-The results of this work are intended to be used to improve access and reduce barriers for all applicants, presumably part of the agency's renewed efforts to address USDA’s history of systemic discrimination.[^4]
+The results of this work are intended to be used to improve access and reduce barriers for all applicants, presumably part of the agency's renewed efforts to address USDA’s history of systemic discrimination.[^7]
 
-[^4]: Kashyap, Pratyoosh, Becca B.R. Jablonski, and Allison Bauman. “Exploring the Relationships among Stocks of Community Wealth, State Farm to School Policies, and the Intensity of Farm to School Activities.” *Food Policy* 122 (January 2024): 102570. <https://doi.org/10.1016/j.foodpol.2023.102570>.
+[^7]: Kashyap, Pratyoosh, Becca B.R. Jablonski, and Allison Bauman. “Exploring the Relationships among Stocks of Community Wealth, State Farm to School Policies, and the Intensity of Farm to School Activities.” *Food Policy* 122 (January 2024): 102570. <https://doi.org/10.1016/j.foodpol.2023.102570>.
 
 #### Community preparedness
 
-Recent research suggests that the success of food system interventions, policies, and strategies for local economic development may hinge on the preexisting levels of community capital.[^5]
+Recent research suggests that the success of food system interventions, policies, and strategies for local economic development may hinge on the preexisting levels of community capital.[^8]
 
-[^5]: Schmit, Todd M., Becca B.R. Jablonski, Alessandro Bonanno, and Thomas G. Johnson. “Measuring Stocks of Community Wealth and Their Association with Food Systems Efforts in Rural and Urban Places.” *Food Policy* 102 (July 2021): 102119. <https://doi.org/10.1016/j.foodpol.2021.102119>.
+[^8]: Schmit, Todd M., Becca B.R. Jablonski, Alessandro Bonanno, and Thomas G. Johnson. “Measuring Stocks of Community Wealth and Their Association with Food Systems Efforts in Rural and Urban Places.” *Food Policy* 102 (July 2021): 102119. <https://doi.org/10.1016/j.foodpol.2021.102119>.
 
-Additional research showed positive associations between cultural and social capital and farm to school activity.[^6]
+Additional research showed positive associations between cultural and social capital and farm to school activity.[^9]
 
-[^6]: Kashyap, Pratyoosh, Becca B.R. Jablonski, and Allison Bauman. “Exploring the Relationships among Stocks of Community Wealth, State Farm to School Policies, and the Intensity of Farm to School Activities.” *Food Policy* 122 (January 2024): 102570. <https://doi.org/10.1016/j.foodpol.2023.102570>.
+[^9]: Kashyap, Pratyoosh, Becca B.R. Jablonski, and Allison Bauman. “Exploring the Relationships among Stocks of Community Wealth, State Farm to School Policies, and the Intensity of Farm to School Activities.” *Food Policy* 122 (January 2024): 102570. <https://doi.org/10.1016/j.foodpol.2023.102570>.
 
-Much of this research highlights community assets that are often overlooked in community development work.[^7]
+Much of this research highlights community assets that are often overlooked in community development work.[^10]
 
-[^7]: Kashyap, Pratyoosh, Becca B.R. Jablonski, and Allison Bauman. “Exploring the Relationships among Stocks of Community Wealth, State Farm to School Policies, and the Intensity of Farm to School Activities.” *Food Policy* 122 (January 2024): 102570. <https://doi.org/10.1016/j.foodpol.2023.102570>.
+[^10]: Kashyap, Pratyoosh, Becca B.R. Jablonski, and Allison Bauman. “Exploring the Relationships among Stocks of Community Wealth, State Farm to School Policies, and the Intensity of Farm to School Activities.” *Food Policy* 122 (January 2024): 102570. <https://doi.org/10.1016/j.foodpol.2023.102570>.
 
 ## Objective
 
@@ -226,9 +233,9 @@ This report intends to lay the groundwork for an analytic approach that helps de
 
 ### Data access and aggregation
 
-As a first step, a variety of data sets were obtained, cleaned, organized, and used for general data exploration. Information on specific datasets and sources can be found below. All work was done using the open source statistical software R version 4.4.0.[^8]
+As a first step, a variety of data sets were obtained, cleaned, organized, and used for general data exploration. Information on specific datasets and sources can be found below. All work was done using the open source statistical software R version 4.4.0.[^11]
 
-[^8]: <https://www.r-project.org/>
+[^11]: <https://www.r-project.org/>
 
 #### LAMP grant data
 
@@ -289,9 +296,9 @@ lamp_by_county <- counties %>%
   select(fips, county_name, lamp_funded, Award.Amount)
 ```
 
-Information on LAMP awards came from the LAMP Navigator website, where AMS has made this information publicly available, along with a dashboard for sorting, filtering, and visualizing the grant information.[^9] Along with information about the organizations receiving the grant, the dataset includes information on the purpose of the grant (e.g., technical assistance, infrastructure, processing), the match amount, and the total project cost.
+Information on LAMP awards came from the LAMP Navigator website, where AMS has made this information publicly available, along with a dashboard for sorting, filtering, and visualizing the grant information.[^12] Along with information about the organizations receiving the grant, the dataset includes information on the purpose of the grant (e.g., technical assistance, infrastructure, processing), the match amount, and the total project cost.
 
-[^9]: <https://www.ams.usda.gov/data/lamp-navigator>
+[^12]: <https://www.ams.usda.gov/data/lamp-navigator>
 
 ##### LAMP grant award amounts, 2006 - 2023
 
@@ -436,13 +443,13 @@ my_map %>%
 
 #### Community characteristics
 
-A variety of socioeconomic and environmental factors were investigated to assess how they may influence the likelihood of receiving a LAMP grant. These factors include indicators of community wealth, which encompasses social capital, natural capital, financial capital, and a variety of other forms of wealth, which have been shown impacts the ability to engage and participate in such programs.[^10] Additionally, it includes factors related to poverty and food security, which have been shown to exacerbate vulnerabilities and influence accessibility and participation in programs.[^11] Finally, considering the food systems-focus of LAMP, factors related to urbanization and proximity to agricultural land were included because they can influence market dynamics and food system connectivity.[^12]
+A variety of socioeconomic and environmental factors were investigated to assess how they may influence the likelihood of receiving a LAMP grant. These factors include indicators of community wealth, which encompasses social capital, natural capital, financial capital, and a variety of other forms of wealth, which have been shown impacts the ability to engage and participate in such programs.[^13] Additionally, it includes factors related to poverty and food security, which have been shown to exacerbate vulnerabilities and influence accessibility and participation in programs.[^14] Finally, considering the food systems-focus of LAMP, factors related to urbanization and proximity to agricultural land were included because they can influence market dynamics and food system connectivity.[^15]
 
-[^10]: Flora, Cornelia Butler, Jan L. Flora, and Stephen P. Gasteyer. *Rural Communities: Legacy and Change*. 4th ed. Routledge, 2018. <https://doi.org/10.4324/9780429494697>.
+[^13]: Flora, Cornelia Butler, Jan L. Flora, and Stephen P. Gasteyer. *Rural Communities: Legacy and Change*. 4th ed. Routledge, 2018. <https://doi.org/10.4324/9780429494697>.
 
-[^11]: Alisha Coleman-Jensen, Matthew P. Rabbitt, Christian A. Gregory, and Anita Singh. 2021. Household Food Security in the United States in 2020, ERR-298, U.S. Department of Agriculture, Economic Research Service.
+[^14]: Alisha Coleman-Jensen, Matthew P. Rabbitt, Christian A. Gregory, and Anita Singh. 2021. Household Food Security in the United States in 2020, ERR-298, U.S. Department of Agriculture, Economic Research Service.
 
-[^12]: Pothukuchi, Kameshwari, and Jerome L. Kaufman. “The Food System: A Stranger to the Planning Field.” *Journal of the American Planning Association* 66, no. 2 (June 30, 2000): 113–24. <https://doi.org/10.1080/01944360008976093>.
+[^15]: Pothukuchi, Kameshwari, and Jerome L. Kaufman. “The Food System: A Stranger to the Planning Field.” *Journal of the American Planning Association* 66, no. 2 (June 30, 2000): 113–24. <https://doi.org/10.1080/01944360008976093>.
 
 ##### Indicators of community wealth
 
@@ -467,9 +474,11 @@ comm_wealth_all <- comm_wealth_all %>%
   filter(variable_name != 'broad_11')
 ```
 
-Community wealth data were accessed via the USDA AMS Data and Metrics GitHub repository.[^13] The main source of data was the "Indicators of Community Wealth" dataset within this repository, which was the result of various pre-processing steps that are outlined within the Rmarkdown file included in the repo.
+Community wealth data were accessed via the USDA AMS Data and Metrics GitHub repository.[^16] The main source of data was the "Indicators of Community Wealth" dataset within this repository, which was the result of various pre-processing steps that are outlined within the Rmarkdown file included in the repo.
 
-[^13]: <https://github.com/CSU-Local-and-Regional-Food-Systems/USDA-AMS-Data-and-Metrics/tree/main>
+[^16]: <https://github.com/CSU-Local-and-Regional-Food-Systems/USDA-AMS-Data-and-Metrics/tree/main>
+
+##### Table of indicators of community wealth variables and sources
 
 ```{r community wealth variables table}
 
@@ -519,28 +528,10 @@ gt_tbl <- d |>
   group_by(category) |>
   gt(rowname_col = "variable") %>%
   cols_hide('category') %>%
-  tab_header(
-    title = "Indicators of community wealth variables",
-    subtitle = "Descriptions and sources of data used in analysis"
-  ) |>
-  # tab_source_note(
-  #   source_note = "Source: The World Almanac and Book of Facts, 1975, page 406."
+  # tab_header(
+  #   title = "Indicators of community wealth variables",
+  #   subtitle = "Descriptions and sources of data used in analysis"
   # ) |>
-  # tab_source_note(
-  #   source_note = md("Reference: McNeil, D. R. (1977) *Interactive Data Analysis*. Wiley.")
-  # ) |>
-  # tab_footnote(
-  #   footnote = md("The **largest** by area."),
-  #   locations = cells_body(
-  #     columns = size, rows = largest
-  #   )
-  # ) |>
-  # tab_footnote(
-  #   footnote = "The lowest by population.",
-  #   locations = cells_body(
-  #     columns = size, rows = contains("arc")
-  #   )
-  # ) |> 
   tab_row_group(
     label = html("<strong>Community Characteristics</strong>"),
     rows = category == 'Community Characteristics'
@@ -581,7 +572,7 @@ gt_tbl <- d |>
   opt_table_font(
     font = google_font("Roboto")) |>
   tab_options(
-    table.font.size = 11
+    table.font.size = 12
   ) |>
   tab_options(quarto.disable_processing = TRUE)
 
@@ -884,9 +875,9 @@ my_map %>%
 
 ##### Poverty rate
 
-Count-level poverty rates were sourced from the 2022 US Census.[^14]
+Count-level poverty rates were sourced from the 2022 US Census.[^17]
 
-[^14]: U.S. Census Bureau. (n.d.). *SAIPE State and County Estimates for 2022*. Retrieved March 27, 2024, from <https://data.census.gov/>
+[^17]: U.S. Census Bureau. (n.d.). *SAIPE State and County Estimates for 2022*. Retrieved March 27, 2024, from <https://data.census.gov/>
 
 ```{r poverty data grab}
 
@@ -963,9 +954,9 @@ ag_land_sf <- counties %>%
   st_transform(4326)
 ```
 
-Data on total agricultural land were obtained from the 2022 Census of Agriculture.[^15]
+Data on total agricultural land were obtained from the 2022 Census of Agriculture.[^18]
 
-[^15]: 2022 Census of Agriculture. QuickStats, State and County Data. \[Washington, D.C.\] :United States Department of Agriculture, National Agricultural Statistics Service, 2014.
+[^18]: 2022 Census of Agriculture. QuickStats, State and County Data. \[Washington, D.C.\] :United States Department of Agriculture, National Agricultural Statistics Service, 2014.
 
 ##### "Rural" and "underserved" classification
 
@@ -1002,9 +993,9 @@ underserved <- underserved_sf %>%
   st_drop_geometry()
 ```
 
-Data on county-level classification as "rural" and/or "underserved" were obtained from the Consumer Financial Protection Bureau.[^16]
+Data on county-level classification as "rural" and/or "underserved" were obtained from the Consumer Financial Protection Bureau.[^19]
 
-[^16]: <https://www.consumerfinance.gov/rural-or-underserved-tool/>
+[^19]: <https://www.consumerfinance.gov/rural-or-underserved-tool/>
 
 ##### Rural-Urban Continuum Classification
 
@@ -1024,9 +1015,9 @@ ruc_sf <- counties %>%
   st_transform(4326)
 ```
 
-The categorization of each county on the rural-urban continuum came from the USDA-ERS.[^17]
+The categorization of each county on the rural-urban continuum came from the USDA-ERS.[^20]
 
-[^17]: <https://www.ers.usda.gov/data-products/rural-urban-continuum-codes/>
+[^20]: <https://www.ers.usda.gov/data-products/rural-urban-continuum-codes/>
 
 ##### Exploratory map of additional explanatory variables
 
@@ -2138,9 +2129,7 @@ gt_tbl
 
 ```
 
-##### 
-
-### Discussion
+## Discussion
 
 This report provides an initial analysis of community characteristics influencing the allocation of LAMP grant funding. Through methods such as Principal Component Analysis and clustering, it identifies key factors and patterns that may affect grant distribution. The findings highlight potential barriers and suggest that certain community attributes, like educational levels and infrastructure, play significant roles in grant success. These insights can guide policy recommendations to ensure more equitable access to LAMP resources, ultimately fostering stronger local and regional food systems across diverse communities.
 
