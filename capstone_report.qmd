@@ -1,5 +1,5 @@
 ---
-title: "Analyzing the Role of Community and Individual Factors in LAMP Grant Funding: Identifying Potential Barriers Across US Counties"
+title: "Analyzing the Role of Community and Individual Factors in LAMP Grant Funding: Identifying Potential Barriers Across US Counties<br>"
 #subtitle: "FAS Food Systems Impact Fellowship Capstone Project, 2024"
 author: "Elliot Hohn<br>Sr. Agricultural Data Scientist Impact Fellow<br>Federation of American Scientists<br>ehohn@fas.org<br><br>May 2024"
 execute:
@@ -46,7 +46,6 @@ library(shiny)
 library(rmarkdown)
 library(plotly)
 library(reshape2)
-library(bivariatechoropleths)
 library(biscale)
 library(rio)
 library(janitor)
@@ -125,24 +124,6 @@ pca_prep <- function(d){
     select(-c(GEOID, county_name, percentile))
   return(d)
 }
-
-# pca_reduce <- function(d){
-#   pca_results <- PCA(pca_prep(d), graph = FALSE)
-#   eig_keepers <- data.frame(pca_results$eig) %>%
-#     filter(eigenvalue >= 1.0)
-#   comps <- nrow(eig_keepers)
-#   if (comps > 0) {
-#     scores <- pca_results$var$coord %>% as_tibble()
-#     df_reduced <- scores[,1:comps]
-#     colnames(df_reduced) <- paste(deparse(substitute(d)), colnames(df_reduced), sep = "_")
-#     return(data.frame(df_reduced))
-#   } else {
-#     return(NULL)
-#   }
-# }
-
-# font_import()
-# loadfonts(device = "all", quiet = TRUE)
 
 theme_set(theme_void(base_family = "Roboto"))
 
