@@ -16,6 +16,7 @@ format:
     margin-right: 0px
     toc: true
     toc-expand: 2
+    #page-layout: full
     #page-layout: custom
 fig-align: center
 editor: visual
@@ -580,7 +581,8 @@ gt_tbl <- d |>
     font = google_font("Roboto")) |>
   tab_options(
     table.font.size = 11
-  )
+  ) |>
+  tab_options(quarto.disable_processing = TRUE)
 
 
 # Show the gt table
@@ -1615,8 +1617,8 @@ The optimal number of clusters was determined using the "elbow method", which wo
 
 ```{r cluster analysis}
 #| fig-align: center
-#| fig-width: 15
-#| fig-height: 5
+#| fig-width: 12
+#| fig-height: 7
 #| out-width: 70%
 
 # df <- df %>% 
@@ -1694,16 +1696,16 @@ plot_creator <- function(pc_n) {
   filter(grepl(paste0("pc", pc_n, "_"), variable)) %>%
   ggplot(aes(x=cluster, y=value),
          shape = 21) +
-  geom_jitter(aes(color = factor(lamp_funded), fill = factor(cluster)),
-              shape=21, size = 1, alpha = 0.5, stroke = 0.4) +
+  geom_jitter(aes(fill = factor(cluster), color = factor(cluster)),
+              shape=21, size = 1, alpha = 0.6,
+              color = 'transparent') +
   geom_boxplot(aes(group = cluster), fill = 'transparent',
                outlier.color = 'darkred', outlier.shape = 4) +
   coord_flip() +
   scale_fill_manual(
     values = as.vector(paletteer_d("rcartocolor::Prism"))[1:length(unique(clustered_melted2$cluster))]) +
   scale_colour_manual(
-    values=c("transparent", "darkgreen"),
-    labels = c("Did not receive\nLAMP funding", "Received\nLAMP funding")) +
+    values = as.vector(paletteer_d("rcartocolor::Prism"))[1:length(unique(clustered_melted2$cluster))]) +
   #theme_minimal() +
   # labs(title = var,
   #      #x ="Social Capital Cluster", 
@@ -1713,17 +1715,18 @@ plot_creator <- function(pc_n) {
   theme(
     legend.position="none",
     #plot.title=element_text(family='Roboto', face='bold', size=20),
-    plot.margin = margin(t = 60,  # Top margin
+    plot.margin = margin(t = 50,  # Top margin
                          r = 0,  # Right margin
                          b = 0,  # Bottom margin
                          l = 0)
   )
 }
 
+
 table_creator <- function(pc_n) {
   mean_col <- colnames(cdf)[grepl(paste0("pc", pc_n, "_"), colnames(cdf))][1]
   sd_col <- colnames(cdf)[grepl(paste0("pc", pc_n, "_"), colnames(cdf))][2]
-  cdf %>%
+  c <- cdf %>%
     select(cluster, count, dplyr::starts_with(paste0("pc", pc_n, "_"))) %>%
     mutate(mean = round(!!sym(mean_col), 2),
            sd = round(!!sym(sd_col), 2)) %>%
@@ -1734,15 +1737,36 @@ table_creator <- function(pc_n) {
     mutate(
       `mean (sd)` = paste0(as.character(mean), " (", as.character(sd), ")")
     ) %>%
-    select(cluster, count, `mean (sd)`) %>%
-    tableGrob(
-      theme=ttheme_minimal(
-        base_size = 15,
-        base_family = 'Roboto Mono',
-        core = list(padding=unit(c(1, 3), "mm"))
-      ), 
-      rows=NULL
-      )
+    select(cluster, count, `mean (sd)`)
+  
+  # this left aligns the first column and right aligns the second and third columns
+  core_hjust <- matrix(c(0, 1, 1), nrow = nrow(c), ncol = ncol(c), byrow = TRUE)
+  core_x <- matrix(c(0.1, 0.9, 0.9), nrow = nrow(c), ncol = ncol(c), byrow = TRUE)
+
+  colhead_hjust <- c(0, 1, 1)
+  colhead_x <- c(0.1, 0.9, 0.9) 
+    
+  c <- tableGrob(
+    c,
+    theme=ttheme_minimal(
+      base_size = 13,
+      base_family = 'Roboto Mono',
+      core = list(
+        padding=unit(c(1, 5), "mm"),
+        fg_params = list(
+          hjust = as.vector(core_hjust),
+          x = as.vector(core_x),
+          fontsize = 12)
+        ),
+      colhead = list(
+        fg_params = list(
+        hjust = colhead_hjust, 
+        x = colhead_x, 
+        fontsize = 16, 
+        fontface = 2))
+    ), 
+    rows=NULL
+    )
 }
 
 t1 <- table_creator(1)
@@ -1766,22 +1790,6 @@ p9 <- plot_creator(9)
 t10 <- table_creator(10)
 p10 <- plot_creator(10)
 
-# plot_layout <- 
-#   "AB
-#    CD
-#    EF
-#    GH
-#    IJ
-#    KL
-#    MN
-#    OP
-#    QR
-#    ST
-#       "  
-#   
-# wrap_plots(p1, t1, p2, t2, p3, t3, p4, t4, p5, t5, p6, t6,
-#            p7, t7, p8, t8, p9, t9, p10, t10, design = plot_layout)
-
 plot_design <- 
   "
   AB
@@ -1797,7 +1805,7 @@ Principal Component #1 - Education
 #| fig-width: 10
 #| fig-height: 5
 
-wrap_plots(p1, t1, design = plot_design)
+wrap_plots(p1, t1, design = plot_design, heights = c(8,200))
 
 ```
 
@@ -1919,110 +1927,53 @@ wrap_plots(p10, t10, design = plot_design)
 
 ```
 
-```{r clusters summary table}
+### Regression analysis
 
-# summary_stats <- clustered %>%
-#   group_by(cluster) %>%
-#   get_summary_stats() %>%
-#   arrange(variable)
-# 
-# brks <- quantile(select(summary_stats, -c(cluster, variable)), probs = seq(.05, .95, .05), na.rm = TRUE)
-# clrs <- round(seq(255, 40, length.out = length(brks) + 1), 0) %>%
-#   {paste0("rgb(255,", ., ",", ., ")")}
-# 
-# datatable(
-#   summary_stats,
-#   extensions = 'RowGroup',
-#   options = list(rowGroup = list(dataSrc = 2)),
-#   selection = 'none'
-# ) %>% formatStyle(names(summary_stats), backgroundColor = styleInterval(brks, clrs))
+Regression analysis is a statistical technique that is used to estimate the effect of one or more explanatory variables on a dependent variable. In this case, regression can be used to evaluate the relationship between each of the community characteristic variables (the explanatory variables) and the LAMP funding amounts (the dependent variable) at the county level.
 
-```
+While each of the original original 44 community characteristic variables could be included in the regression model as explanatory variables, this analysis opts to use only the ten principal components. These components capture much of the variance of the original variables, while allowing for a simpler model that is easier to interpret.
 
-```{r cluster analysis plots}
-#| fig-width: 10
-#| fig-height: 8
+#### Linear regression using per capita LAMP funding
 
-# clustered_melted <- reshape2::melt(
-#   clustered, id.vars = c('cluster', 'lamp_funded'))
-# 
-# # grp1 <- colnames(df)[1:4]
-# # 
-# # tests <- df2 %>%
-# #   group_by(variable, cluster) %>%
-# #   summarize(mean = mean(value))
-# 
-# p <- ggplot(clustered_melted, 
-#             aes(x=cluster, y=value), 
-#             shape = 21) +
-#   geom_jitter(aes(color = factor(lamp_funded), fill = factor(cluster)),
-#               shape=21, size = 1, alpha = 0.5, stroke = 0.4) +
-#   geom_boxplot(aes(group = cluster), fill = 'transparent',
-#                outlier.color = 'darkred', outlier.shape = 4) +
-#   scale_fill_manual(
-#     values = as.vector(paletteer_d("rcartocolor::Prism"))[1:length(unique(clustered_melted$cluster))]) +
-#   scale_colour_manual(
-#     values=c("transparent", "darkgreen"),
-#     labels = c("Did not receive\nLAMP funding", "Received\nLAMP funding")) +
-#   facet_wrap(~ variable, ncol = 3, nrow = 4, scales = 'free_y') +
-#   #theme_minimal() +
-#   labs(title="County-level principal component values, by cluster",
-#        x ="Social Capital Cluster", y = "Social Capital Index",
-#        color = "") +
-#   theme(
-#     legend.position="none",
-#     strip.background = element_rect(fill="#2F414BFF"),
-#     strip.text = element_text(color = 'grey76', face = 'bold', size = 14)
-#   )
-# 
-# p
-# 
-# #ggsave("cluster_plot.png", plot = p, width = 5000, height = 2200, units = 'px')
-```
+For this analysis, a linear regression could be used to look at the relationship between community characteristics and the total amount of LAMP funding per county. This approach provides estimates on the relationship between each explanatory variable and the actual dollar amount going to each county.
 
-### Dimension reduction
+#### Logistic regression using binary funded/not funded
 
-Use principal component analysis (PCA) to reduce dimensionality of datasets and retain only most important information.
-
-## Regression
-
-The regression looks something like the following:
-
-$$
-\begin{equation}\hat{Y}_i = \hat{\beta}_0 + \hat{\beta}_1 X_i + \hat{\epsilon}_i\end{equation}
-$$
+Alternatively, a logistic regression could be used to focus on whether or not a given county received any LAMP funding at all. This approach provides estimates on the relationship between each explanatory variable and the probability of a given county receiving any LAMP funding at all.
 
 ```{r regression analysis all vars}
 
-# Use dataset with all og data plus factors and lamp grant data
-d_reg <- d %>%
-  merge(d_factors, by = 0) %>%
-  rename(fips = Row.names) %>%
-  merge(lamp_by_county2, by = 'fips') %>%
-  merge(pop, by = 'fips') %>%
-  mutate(award_per_capita = Award.Amount / population_2020) %>%
-  select(-c(population_2020, county_name)) %>%
-  mutate(
-    Award.Amount = ifelse(is.na(Award.Amount), 0, Award.Amount),
-    award_per_capita = ifelse(is.na(award_per_capita), 0, award_per_capita)
-  )
-
-# start with just a few variables as predictors
-predictors <- names(d_reg)[!names(d_reg) %in% c('fips', 'lamp_funded', 'Award.Amount', 'award_per_capita')]
-
-# Prepare the model formula
-denyprobit <- glm(paste("lamp_funded ~", paste(predictors, collapse = " + ")),
-                  family = binomial(link = "probit"),
-                  data = d_reg)
-
-coeftest(denyprobit, vcov. = vcovHC, type = "HC1")
-
-denylogit <- glm(paste("lamp_funded ~", paste(predictors, collapse = " + ")),
-                 family = binomial(link = "logit"),
-                 data = d_reg)
-
-coeftest(denylogit, vcov. = vcovHC, type = "HC1")
+# # Use dataset with all og data plus factors and lamp grant data
+# d_reg <- d %>%
+#   merge(d_factors, by = 0) %>%
+#   rename(fips = Row.names) %>%
+#   merge(lamp_by_county2, by = 'fips') %>%
+#   merge(pop, by = 'fips') %>%
+#   mutate(award_per_capita = Award.Amount / population_2020) %>%
+#   select(-c(population_2020, county_name)) %>%
+#   mutate(
+#     Award.Amount = ifelse(is.na(Award.Amount), 0, Award.Amount),
+#     award_per_capita = ifelse(is.na(award_per_capita), 0, award_per_capita)
+#   )
+# 
+# # start with just a few variables as predictors
+# predictors <- names(d_reg)[!names(d_reg) %in% c('fips', 'lamp_funded', 'Award.Amount', 'award_per_capita')]
+# 
+# # Prepare the model formula
+# denyprobit <- glm(paste("lamp_funded ~", paste(predictors, collapse = " + ")),
+#                   family = binomial(link = "probit"),
+#                   data = d_reg)
+# 
+# coeftest(denyprobit, vcov. = vcovHC, type = "HC1")
+# 
+# denylogit <- glm(paste("lamp_funded ~", paste(predictors, collapse = " + ")),
+#                  family = binomial(link = "logit"),
+#                  data = d_reg)
+# 
+# coeftest(denylogit, vcov. = vcovHC, type = "HC1")
 ```
+
+##### Z-test of coefficients - logistic regression
 
 ```{r logit and probit regression pcs}
 
@@ -2043,22 +1994,128 @@ d_reg_pc <- reduced_d %>%
 predictors <- names(d_reg_pc)[!names(d_reg_pc) %in% c('fips', 'lamp_funded', 'Award.Amount', 'award_per_capita')]
 
 # Prepare the model formula
-denyprobit <- glm(paste("lamp_funded ~", paste(predictors, collapse = " + ")),
-                  family = binomial(link = "probit"),
-                  data = d_reg_pc)
-
-coeftest(denyprobit, vcov. = vcovHC, type = "HC1")
+# denyprobit <- glm(paste("lamp_funded ~", paste(predictors, collapse = " + ")),
+#                   family = binomial(link = "probit"),
+#                   data = d_reg_pc)
+# 
+# coeftest(denyprobit, vcov. = vcovHC, type = "HC1")
 
 denylogit <- glm(paste("lamp_funded ~", paste(predictors, collapse = " + ")),
                  family = binomial(link = "logit"),
                  data = d_reg_pc)
 
-r <- coeftest(denylogit, vcov. = vcovHC, type = "HC1")
-r <- data.frame(r)
+model_1_coef <- coeftest(denylogit, vcov. = vcovHC, type = "HC1")
+model_1_coef_df <- as.data.frame(model_1_coef[,]) %>% 
+  mutate_if(is.numeric, round, digits = 2) %>%
+  mutate(sig = ifelse(`Pr(>|z|)` <= .001, "***",
+                      ifelse(`Pr(>|z|)` <= .01, "**",
+                             ifelse(`Pr(>|z|)` <= .05, "*", "")
+                             )
+                      ),
+         `Pr(>|z|)` = as.character(`Pr(>|z|)`),
+         `Pr(>|z|)` = paste0(`Pr(>|z|)`, sig)
+  ) %>%
+  select(-sig)
+
+gt_tbl <- model_1_coef_df |>
+  rownames_to_column() %>%
+  gt() %>%
+  # tab_header(
+  #   title = "Indicators of community wealth variables",
+  #   subtitle = "Descriptions and sources of data used in analysis"
+  # ) |>
+  # tab_source_note(
+  #   source_note = "Source: The World Almanac and Book of Facts, 1975, page 406."
+  # ) |>
+  # tab_source_note(
+  #   source_note = md("Reference: McNeil, D. R. (1977) *Interactive Data Analysis*. Wiley.")
+  # ) |>
+  tab_footnote(
+    footnote = "Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1"#,
+    # locations = cells_body(
+    #   columns = size, rows = largest
+    # )
+  ) |>
+  tab_options(row.striping.include_table_body = FALSE) |>
+  opt_row_striping(row_striping = FALSE) |>
+  opt_table_font(
+    font = google_font("Roboto")) |>
+  tab_options(
+    table.font.size = 11
+  ) |>
+  tab_options(quarto.disable_processing = TRUE)
+
+gt_tbl
+
 ```
+
+##### Z-test of coefficients - linear regression
 
 ```{r linear regression}
 
+# Use dataset with all og data plus factors and lamp grant data
+d_reg_pc <- reduced_d %>%
+  merge(d_factors, by = 0) %>%
+  rename(fips = Row.names) %>%
+  merge(lamp_by_county2, by = 'fips') %>%
+  merge(pop, by = 'fips') %>%
+  mutate(award_per_capita = Award.Amount / population_2020) %>%
+  select(-c(population_2020, county_name)) %>%
+  mutate(
+    Award.Amount = ifelse(is.na(Award.Amount), 0, Award.Amount),
+    award_per_capita = ifelse(is.na(award_per_capita), 0, award_per_capita)
+  )
 
+# start with just a few variables as predictors
+predictors <- names(d_reg_pc)[!names(d_reg_pc) %in% c('fips', 'lamp_funded', 'Award.Amount', 'award_per_capita')]
+
+# Prepare the model formula
+deny_lm <- glm(paste("Award.Amount ~", paste(predictors, collapse = " + ")),
+                  data = d_reg_pc)
+
+model_2_coef <- coeftest(deny_lm, vcov. = vcovHC, type = "HC1")
+model_2_coef_df <- as.data.frame(model_2_coef[,]) %>% 
+  mutate_if(is.numeric, round, digits = 2) %>%
+  mutate(sig = ifelse(`Pr(>|z|)` <= .001, "***",
+                      ifelse(`Pr(>|z|)` <= .01, "**",
+                             ifelse(`Pr(>|z|)` <= .05, "*", "")
+                             )
+                      ),
+         `Pr(>|z|)` = as.character(`Pr(>|z|)`),
+         `Pr(>|z|)` = paste0(`Pr(>|z|)`, sig)
+  ) %>%
+  select(-sig)
+
+gt_tbl <- model_2_coef_df |>
+  rownames_to_column() %>%
+  gt() %>%
+  # tab_header(
+  #   title = "Indicators of community wealth variables",
+  #   subtitle = "Descriptions and sources of data used in analysis"
+  # ) |>
+  # tab_source_note(
+  #   source_note = "Source: The World Almanac and Book of Facts, 1975, page 406."
+  # ) |>
+  # tab_source_note(
+  #   source_note = md("Reference: McNeil, D. R. (1977) *Interactive Data Analysis*. Wiley.")
+  # ) |>
+  tab_footnote(
+    footnote = "Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1"#,
+    # locations = cells_body(
+    #   columns = size, rows = largest
+    # )
+  ) |>
+  tab_options(row.striping.include_table_body = FALSE) |>
+  opt_row_striping(row_striping = FALSE) |>
+  opt_table_font(
+    font = google_font("Roboto")) |>
+  tab_options(
+    table.font.size = 11
+  ) |>
+  tab_options(quarto.disable_processing = TRUE)
+
+gt_tbl
 
 ```
+
+### Discussion
