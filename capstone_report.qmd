@@ -178,7 +178,7 @@ The USDA's Agricultural Marketing Service (AMS) administers a variety of grant p
 
 [^1]: <https://www.ams.usda.gov/sites/default/files/media/LAMP_Report_to_Congress.pdf>
 
-![Promotional materials for LAMP. Image: USDA-AMS, 2024](img/LAMP%20Twitter.png){fig-align="center" width="615"}
+![Promotional materials for LAMP. Image: USDA-AMS, 2024](img/LAMP_Twitter.png){fig-align="center"}
 
 ### Building community capital through food systems investment
 
@@ -419,10 +419,11 @@ my_map %>%
       "
         function(el, x) {
            var updateLegend = function () {
-              var selectedGroup = document.querySelectorAll('input:checked')[0].nextSibling.innerText.substr(1);
+              var mapContainer = el.closest('.leaflet-container');
+              var selectedGroup = mapContainer.querySelectorAll('input:checked')[0].nextSibling.innerText.substr(1);
 
-              document.querySelectorAll('.legend').forEach(a => a.hidden=true);
-              document.querySelectorAll('.legend').forEach(l => {
+              mapContainer.querySelectorAll('.legend').forEach(a => a.hidden=true);
+              mapContainer.querySelectorAll('.legend').forEach(l => {
                  if (l.classList.contains(selectedGroup)) l.hidden=false;
               });
            };
@@ -840,16 +841,35 @@ my_map %>%
       "Financial_Resources",
       "Natural_Resources"
     ),
-    options = layersControlOptions(collapsed = FALSE)
+    options = layersControlOptions(collapsed = TRUE)
   ) %>%
-    htmlwidgets::onRender(
+  # htmlwidgets::onRender(
+  #   "
+  #       function(el, x) {
+  #          var updateLegend = function () {
+  #             var selectedGroup = document.querySelectorAll('input:checked')[0].nextSibling.innerText.substr(1);
+  # 
+  #             document.querySelectorAll('.legend').forEach(a => a.hidden=true);
+  #             document.querySelectorAll('.legend').forEach(l => {
+  #                if (l.classList.contains(selectedGroup)) l.hidden=false;
+  #             });
+  #          };
+  #          updateLegend();
+  #          this.on('baselayerchange', el => updateLegend());
+  #       }"
+  # )
+  
+  
+  
+  htmlwidgets::onRender(
       "
         function(el, x) {
            var updateLegend = function () {
-              var selectedGroup = document.querySelectorAll('input:checked')[0].nextSibling.innerText.substr(1);
+              var mapContainer = el.closest('.leaflet-container');
+              var selectedGroup = mapContainer.querySelectorAll('input:checked')[0].nextSibling.innerText.substr(1);
 
-              document.querySelectorAll('.legend').forEach(a => a.hidden=true);
-              document.querySelectorAll('.legend').forEach(l => {
+              mapContainer.querySelectorAll('.legend').forEach(a => a.hidden=true);
+              mapContainer.querySelectorAll('.legend').forEach(l => {
                  if (l.classList.contains(selectedGroup)) l.hidden=false;
               });
            };
@@ -1173,10 +1193,11 @@ m <- my_map %>%
       "
         function(el, x) {
            var updateLegend = function () {
-              var selectedGroup = document.querySelectorAll('input:checked')[0].nextSibling.innerText.substr(1);
+              var mapContainer = el.closest('.leaflet-container');
+              var selectedGroup = mapContainer.querySelectorAll('input:checked')[0].nextSibling.innerText.substr(1);
 
-              document.querySelectorAll('.legend').forEach(a => a.hidden=true);
-              document.querySelectorAll('.legend').forEach(l => {
+              mapContainer.querySelectorAll('.legend').forEach(a => a.hidden=true);
+              mapContainer.querySelectorAll('.legend').forEach(l => {
                  if (l.classList.contains(selectedGroup)) l.hidden=false;
               });
            };
@@ -2120,3 +2141,21 @@ gt_tbl
 ##### 
 
 ### Discussion
+
+This report provides an initial analysis of community characteristics influencing the allocation of LAMP grant funding. Through methods such as Principal Component Analysis and clustering, it identifies key factors and patterns that may affect grant distribution. The findings highlight potential barriers and suggest that certain community attributes, like educational levels and infrastructure, play significant roles in grant success. These insights can guide policy recommendations to ensure more equitable access to LAMP resources, ultimately fostering stronger local and regional food systems across diverse communities.
+
+### **Next Steps and Future Research**
+
+1.  **Expand Data Sources**: Incorporate additional datasets, such as local economic indicators and community resilience metrics, to provide a more holistic view of factors influencing LAMP funding allocation.
+
+2.  **Longitudinal Studies**: Conduct longitudinal studies to track changes in community characteristics over time and their impact on LAMP funding success. This can help identify long-term trends and effects of previous funding.
+
+3.  **Qualitative Research**: Complement quantitative analysis with qualitative research, such as interviews and focus groups, to capture the nuanced experiences and challenges faced by communities in accessing LAMP grants.
+
+4.  **Policy Evaluation**: Evaluate the effectiveness of current LAMP policies and outreach programs. This can involve assessing whether targeted interventions are reducing barriers for socially disadvantaged communities.
+
+5.  **Geospatial Analysis**: Use advanced geospatial analysis to identify spatial patterns and clusters of grant allocation, focusing on underserved regions that may benefit from targeted support.
+
+6.  **Collaboration and Partnerships**: Encourage collaboration between academic institutions, government agencies, and community organizations to share data, insights, and best practices, enhancing the overall impact of LAMP programs.
+
+7.  **Impact Assessment**: Develop metrics to assess the socio-economic impact of LAMP funding on local food systems, including job creation, business growth, and community well-being, to better understand and communicate the program's benefits.

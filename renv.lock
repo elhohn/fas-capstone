@@ -3587,13 +3587,18 @@
     },
     "tinytex": {
       "Package": "tinytex",
-      "Version": "0.50",
-      "Source": "Repository",
-      "Repository": "CRAN",
+      "Version": "0.51.1",
+      "Source": "GitHub",
+      "RemoteType": "github",
+      "RemoteHost": "api.github.com",
+      "RemoteRepo": "tinytex",
+      "RemoteUsername": "yihui",
+      "RemoteRef": "HEAD",
+      "RemoteSha": "27672c8be38dc5b93b82292da468f420da77bffd",
       "Requirements": [
         "xfun"
       ],
-      "Hash": "be7a76845222ad20adb761f462eed3ea"
+      "Hash": "2d871ffe6d077e8843a7d1342220c645"
     },
     "tzdb": {
       "Package": "tzdb",
@@ -3749,15 +3754,15 @@
     },
     "xfun": {
       "Package": "xfun",
-      "Version": "0.43",
+      "Version": "0.44",
       "Source": "Repository",
-      "Repository": "CRAN",
+      "Repository": "RSPM",
       "Requirements": [
         "grDevices",
         "stats",
         "tools"
       ],
-      "Hash": "ab6371d8653ce5f2f9290f4ec7b42a8e"
+      "Hash": "317a0538d32f4a009658bcedb7923f4b"
     },
     "xml2": {
       "Package": "xml2",
