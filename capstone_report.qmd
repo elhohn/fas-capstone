@@ -1937,6 +1937,74 @@ While each of the original original 44 community characteristic variables could 
 
 For this analysis, a linear regression could be used to look at the relationship between community characteristics and the total amount of LAMP funding per county. This approach provides estimates on the relationship between each explanatory variable and the actual dollar amount going to each county.
 
+##### Z-test of coefficients - linear regression
+
+```{r linear regression}
+
+# Use dataset with all og data plus factors and lamp grant data
+d_reg_pc <- reduced_d %>%
+  merge(d_factors, by = 0) %>%
+  rename(fips = Row.names) %>%
+  merge(lamp_by_county2, by = 'fips') %>%
+  merge(pop, by = 'fips') %>%
+  mutate(award_per_capita = Award.Amount / population_2020) %>%
+  select(-c(population_2020, county_name)) %>%
+  mutate(
+    Award.Amount = ifelse(is.na(Award.Amount), 0, Award.Amount),
+    award_per_capita = ifelse(is.na(award_per_capita), 0, award_per_capita)
+  )
+
+# start with just a few variables as predictors
+predictors <- names(d_reg_pc)[!names(d_reg_pc) %in% c('fips', 'lamp_funded', 'Award.Amount', 'award_per_capita')]
+
+# Prepare the model formula
+deny_lm <- glm(paste("Award.Amount ~", paste(predictors, collapse = " + ")),
+                  data = d_reg_pc)
+
+model_2_coef <- coeftest(deny_lm, vcov. = vcovHC, type = "HC1")
+model_2_coef_df <- as.data.frame(model_2_coef[,]) %>% 
+  mutate_if(is.numeric, round, digits = 2) %>%
+  mutate(sig = ifelse(`Pr(>|z|)` <= .001, "***",
+                      ifelse(`Pr(>|z|)` <= .01, "**",
+                             ifelse(`Pr(>|z|)` <= .05, "*", "")
+                             )
+                      ),
+         `Pr(>|z|)` = as.character(`Pr(>|z|)`),
+         `Pr(>|z|)` = paste0(`Pr(>|z|)`, sig)
+  ) %>%
+  select(-sig)
+
+gt_tbl <- model_2_coef_df |>
+  rownames_to_column() %>%
+  gt() %>%
+  # tab_header(
+  #   title = "Indicators of community wealth variables",
+  #   subtitle = "Descriptions and sources of data used in analysis"
+  # ) |>
+  # tab_source_note(
+  #   source_note = "Source: The World Almanac and Book of Facts, 1975, page 406."
+  # ) |>
+  # tab_source_note(
+  #   source_note = md("Reference: McNeil, D. R. (1977) *Interactive Data Analysis*. Wiley.")
+  # ) |>
+  tab_footnote(
+    footnote = "Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1"#,
+    # locations = cells_body(
+    #   columns = size, rows = largest
+    # )
+  ) |>
+  tab_options(row.striping.include_table_body = FALSE) |>
+  opt_row_striping(row_striping = FALSE) |>
+  opt_table_font(
+    font = google_font("Roboto")) |>
+  tab_options(
+    table.font.size = 12
+  ) |>
+  tab_options(quarto.disable_processing = TRUE)
+
+gt_tbl
+```
+
 #### Logistic regression using binary funded/not funded
 
 Alternatively, a logistic regression could be used to focus on whether or not a given county received any LAMP funding at all. This approach provides estimates on the relationship between each explanatory variable and the probability of a given county receiving any LAMP funding at all.
@@ -2041,7 +2109,7 @@ gt_tbl <- model_1_coef_df |>
   opt_table_font(
     font = google_font("Roboto")) |>
   tab_options(
-    table.font.size = 11
+    table.font.size = 12
   ) |>
   tab_options(quarto.disable_processing = TRUE)
 
@@ -2049,73 +2117,6 @@ gt_tbl
 
 ```
 
-##### Z-test of coefficients - linear regression
-
-```{r linear regression}
-
-# Use dataset with all og data plus factors and lamp grant data
-d_reg_pc <- reduced_d %>%
-  merge(d_factors, by = 0) %>%
-  rename(fips = Row.names) %>%
-  merge(lamp_by_county2, by = 'fips') %>%
-  merge(pop, by = 'fips') %>%
-  mutate(award_per_capita = Award.Amount / population_2020) %>%
-  select(-c(population_2020, county_name)) %>%
-  mutate(
-    Award.Amount = ifelse(is.na(Award.Amount), 0, Award.Amount),
-    award_per_capita = ifelse(is.na(award_per_capita), 0, award_per_capita)
-  )
-
-# start with just a few variables as predictors
-predictors <- names(d_reg_pc)[!names(d_reg_pc) %in% c('fips', 'lamp_funded', 'Award.Amount', 'award_per_capita')]
-
-# Prepare the model formula
-deny_lm <- glm(paste("Award.Amount ~", paste(predictors, collapse = " + ")),
-                  data = d_reg_pc)
-
-model_2_coef <- coeftest(deny_lm, vcov. = vcovHC, type = "HC1")
-model_2_coef_df <- as.data.frame(model_2_coef[,]) %>% 
-  mutate_if(is.numeric, round, digits = 2) %>%
-  mutate(sig = ifelse(`Pr(>|z|)` <= .001, "***",
-                      ifelse(`Pr(>|z|)` <= .01, "**",
-                             ifelse(`Pr(>|z|)` <= .05, "*", "")
-                             )
-                      ),
-         `Pr(>|z|)` = as.character(`Pr(>|z|)`),
-         `Pr(>|z|)` = paste0(`Pr(>|z|)`, sig)
-  ) %>%
-  select(-sig)
-
-gt_tbl <- model_2_coef_df |>
-  rownames_to_column() %>%
-  gt() %>%
-  # tab_header(
-  #   title = "Indicators of community wealth variables",
-  #   subtitle = "Descriptions and sources of data used in analysis"
-  # ) |>
-  # tab_source_note(
-  #   source_note = "Source: The World Almanac and Book of Facts, 1975, page 406."
-  # ) |>
-  # tab_source_note(
-  #   source_note = md("Reference: McNeil, D. R. (1977) *Interactive Data Analysis*. Wiley.")
-  # ) |>
-  tab_footnote(
-    footnote = "Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1"#,
-    # locations = cells_body(
-    #   columns = size, rows = largest
-    # )
-  ) |>
-  tab_options(row.striping.include_table_body = FALSE) |>
-  opt_row_striping(row_striping = FALSE) |>
-  opt_table_font(
-    font = google_font("Roboto")) |>
-  tab_options(
-    table.font.size = 11
-  ) |>
-  tab_options(quarto.disable_processing = TRUE)
-
-gt_tbl
-
-```
+##### 
 
 ### Discussion
