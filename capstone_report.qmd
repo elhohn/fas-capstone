@@ -414,6 +414,7 @@ my_map %>%
     values = ~Grant.Type,
     title = "Grant Type",
     opacity = 1,
+    labFormat = labelFormat(transform = function(x) sort(x, decreasing = TRUE)),
     className = "info legend City/Town"
   ) %>% addLayersControl(
     baseGroups = c(
