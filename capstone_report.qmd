@@ -1,6 +1,6 @@
 ---
 title: "Analyzing the Role of Community and Individual Factors in LAMP Grant Funding: Identifying Diverse Barriers Across Clustered US Counties"
-subtitle: "FAS Food Systems Impact Fellowship Capstone Project, April 2024"
+subtitle: "FAS Food Systems Impact Fellowship Capstone Project, 2024"
 author: "Elliot Hohn\nSr. Agricultural Data Scientist Impact Fellow"
 execute:
   echo: false
