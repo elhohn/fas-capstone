@@ -1425,7 +1425,7 @@ p
 #ggsave("myplot.png", plot = p, width = 6000, height = 3000, units = 'px')
 ```
 
-While no conclusions can be drawn from the plots above, there are a number of interesting, and somewhat intuitive, trends that can be seen. For example, the rural continuum, where higher values indicate more rurality, shows an upward slope, indicating greater amounts of per capita funding going to counties that are more rural in nature. Similarly, the number of food and beverage industries per capita shows a positive relationship with LAMP funding, possibly a sign of relatively greater investment in food systems within those counties.
+While no conclusions can be drawn from the plots above, there are a number of interesting, if somewhat intuitive, trends that can be seen. For example, the rural continuum, where higher values indicate more rurality, shows an upward slope, indicating greater amounts of per capita funding going to counties that are more rural in nature. Similarly, the number of food and beverage industries per capita shows a positive relationship with LAMP funding, possibly a sign of relatively greater investment in food systems within those counties.
 
 However, all of these relationship are speculative, and the degree, and direction, of causation cannot be determined through this analysis alone.
 
@@ -1433,7 +1433,7 @@ However, all of these relationship are speculative, and the degree, and directio
 
 Principal Component Analysis (PCA) is a technique used to reduce the dimensionality of multivariate data sets. It aims to simplify the data by reducing the number of variables into a smaller number of components, while still retaining as much variation from the original variables as possible, thereby allowing for a more concise expression of a larger set of variables.
 
-In the context of this analysis, PCA is thought to be an appropriate approach because of the thematic overlap among groups of variables, implying that multicolinearity may be an issue. Indeed, a correlation matrix of all variables shows a number of highly correlated variables within the dataset.
+In the context of this analysis, PCA is thought to be an appropriate approach because of the thematic overlap among groups of variables, implying that multicolinearity may be an issue. Indeed, a correlation matrix of all variables shows a number of highly correlated variables within the dataset, where darker blue means higher positive correlation, and darker red indicates higher negative correlation.
 
 ##### Correlation matrix
 
@@ -1452,23 +1452,56 @@ corrplot(correlation, method = 'square', tl.cex = 0.5, tl.col = 'black', tl.srt 
 
 ```
 
-After disposing of all principal components with eigenvalues less than one, five principal components remained. The plots below show the main variables contributing to each of the 10 principal components.
+After disposing of all principal components with eigenvalues less than one, ten principal components remained. As shown in the table below, these ten principal components cumulatively account for 70.4 percent of the variance in the data, while reducing the dimensionality by more than 75 percent.
 
-##### Key variables contributing to each principal component
+##### Proportion of variance explained by the top 10 principal components
+
+```{r PC contributions}
+#| fig-align: center
+
+## PCA
+res.pca <- prcomp(d, scale = TRUE)
+pca_summary <- summary(res.pca)
+pv <- data.frame(pca_summary$importance)[,1:10] %>%
+  mutate_if(is.numeric, round, digits = 3)
+
+pv %>%
+  rownames_to_column() %>%
+  gt() |>
+  tab_options(row.striping.include_table_body = FALSE) |>
+  fmt_percent(
+    rows = c(2,3),
+    decimals = 1
+  ) |>
+  fmt_number(
+    rows = c(1),
+    decimals = 2
+  ) |>
+  cols_align(
+    align = 'center',
+    columns = c(2:ncol(pv))
+  ) |>
+  opt_row_striping(row_striping = FALSE) |>
+  opt_table_font(
+    font = google_font("Roboto")) |>
+  tab_options(
+    table.font.size = 12
+  ) |>
+  tab_options(quarto.disable_processing = TRUE)
+```
+
+Each of these principal components is composed of some pThe table and plots below show the main variables contributing to each of these components.
 
 ```{r principal components analysis}
 #| fig-align: center
 #| fig-width: 10
 #| fig-height: 10
 
-## PCA
-res.pca <- prcomp(d, scale = TRUE)
-#pca_summary <- summary(res.pca)
 
 #fviz_eig(res.pca, col.var="blue", ncp = 25)
 
 var <- get_pca_var(res.pca)
-#corrplot(var$cos2, is.corr=FALSE)
+#corrplot(var$cos2[,1:10], is.corr=FALSE)
 
 eig_vals <- res.pca$sdev
 k <- length(eig_vals[eig_vals >= 1])
@@ -1599,9 +1632,27 @@ rotated_data <- data.frame(res.pca$x[,1:k])
 
 #### Discussion of retained principal components
 
-The ten retained principal components were renamed according to their contributing variables.
+The ten retained principal components were renamed according to their contributing variables. While not all have a clear categorical theme, the PCs were renamed as the following:
 
-Names: "pc1_education""pc2_arts", "pc3_conservation1", "pc4_farmland1", "pc5_infrastructure", "pc6_farmland2", "pc7_manufacturing", "pc8_conservation2", "pc9_foodbev", "pc10_civics"
+-   PC1 -\> "Education"
+
+-   PC2 -\> "Arts"
+
+-   PC3 - \> "Conservation1"
+
+-   PC4 -\> "Farmland1"
+
+-   PC5 -\> "Infrastructure"
+
+-   PC6 -\> "Farmland2"
+
+-   PC7 -\> "Manufacturing"
+
+-   PC8 -\> "Conservation2"
+
+-   PC9 -\> "Food and Beverage"
+
+-   PC10 -\> "Civics"
 
 ```{r rename principal component variables}
 
