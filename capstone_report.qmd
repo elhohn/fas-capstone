@@ -343,7 +343,7 @@ For this analysis, the total award amount and the location of the organization r
 ##### Geographic distribution of LAMP Grants, 2006-2023
 
 ```{r lamp funded leaflet map}
-#| column: page
+#| column: body-outset
 #| out-width: 75%
 
 d_map_lamp <- lamp_sf
@@ -605,6 +605,7 @@ For each category listed in the table above, all metrics within that category we
 ##### Map of community wealth metrics
 
 ```{r wealth map}
+#| column: body-outset
 #| warnings: false
 
 bins <- seq(from = 0, to = 100, by = 20)
@@ -1012,6 +1013,7 @@ The categorization of each county on the rural-urban continuum came from the USD
 ##### Exploratory map of additional explanatory variables
 
 ```{r ruc and ag land map}
+#| column: body-outset
 
 ruc_pal <- colorFactor(
   palette = as.vector(paletteer_d("trekcolors::tholian"))[1:9], 
@@ -1271,10 +1273,10 @@ d2 <- d %>%
 ```
 
 ```{r wealth vs award scatter plots}
-#| fig-height: 15
+#| column: body-outset
+#| fig-height: 10
 #| fig-width: 10
 #| fig-align: center
-#| out-width: 100%
 
 old_vars <- c(
   "acre_FSA", 
@@ -1653,6 +1655,8 @@ The ten retained principal components were renamed according to their contributi
 -   PC9 -\> "Food and Beverage"
 
 -   PC10 -\> "Civics"
+
+The principal components are used later in this analysis as explanatory variables in a regression model.
 
 ```{r rename principal component variables}
 
