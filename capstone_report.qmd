@@ -343,7 +343,7 @@ For this analysis, the total award amount and the location of the organization r
 ##### Geographic distribution of LAMP Grants, 2006-2023
 
 ```{r lamp funded leaflet map}
-#| column: screen
+#| column: page
 #| out-width: 75%
 
 d_map_lamp <- lamp_sf
