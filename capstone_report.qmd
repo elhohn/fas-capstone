@@ -1409,7 +1409,7 @@ p <- ggplot(d3 %>% filter(variable != "Total LAMP funding") %>% ungroup(),
      scale_color_manual(values = ggsci::pal_igv("default")(length(unique(d3$variable)))) +
      scale_fill_manual(values = ggsci::pal_igv("default")(length(unique(d3$variable)))) +
      facet_wrap(~ variable, ncol = 6, scales = 'free_x') +
-     labs(title = 'Community Wealth Indices vs LAMP $ Per Capita, 2016-2022',
+     labs(#title = 'Community Wealth Indices vs LAMP $ Per Capita, 2016-2022',
           y = 'Total Award $ Per Capita, 2016-2022',
           x = '',
           caption = "Note: two counties, Menominee County (Michigan) and Kidder County (North Dakota), were removed from the dataset used for this plot because they were identified as outliers."
@@ -1656,7 +1656,7 @@ The ten retained principal components were renamed according to their contributi
 
 -   PC10 -\> "Civics"
 
-The principal components are used later in this analysis as explanatory variables in a regression model.
+The principal components are used later in this analysis as explanatory variables in a regression model, therefore the improved interpretability of the variables names is beneficial in understanding any relationships that are defined in that analysis.
 
 ```{r rename principal component variables}
 
@@ -1670,7 +1670,7 @@ reduced_d <- rotated_data %>% rename_at(vars(all_of(oldnames)), ~ newnames)
 
 ### Cluster analysis
 
-Another approach to dealing with the large number of variables that may be related to LAMP grant funding is to use a clustering algorithm to find groups of counties that are similar across many variables.
+Another approach that be useful in dealing with the large number of variables is a cluster analysis. With this approach, groups of counties that are similar across multiple variables are identified using a clustering algorithm.
 
 The optimal number of clusters was determined using the "elbow method", which works by running k-means clustering using a range of K values (1:20 was used in this analysis), calculating the average score for each cluster, and plotting the mean distance. The optimal value of K is the point where the rate of decrease in distortion or inertia shifts, known as the "elbow".
 
